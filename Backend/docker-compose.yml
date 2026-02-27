@@ -1,0 +1,19 @@
+version: '3.8'
+services:
+
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: strawberry_db
+    ports:
+      - "5432:5432"
+
+  mqtt:
+    image: eclipse-mosquitto:latest
+    restart: always
+    ports:
+      - "1883:1883"
+    command: mosquitto -c /mosquitto-no-auth.conf
