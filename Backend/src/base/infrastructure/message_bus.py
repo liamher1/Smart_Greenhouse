@@ -55,4 +55,5 @@ class MessageBus:
         tasks = [handler(event) for handler in handlers]
         logger.info(f"Gathering {len(tasks)} handlers for {type(event).__name__}")
         await asyncio.gather(*tasks, return_exceptions=True)
+        #2
 

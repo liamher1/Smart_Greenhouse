@@ -17,6 +17,7 @@ engine = create_async_engine(DATABASE_URL, echo=True, future=True)
 # Factory for creating new database sessions
 async_session_maker = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
+    #1
 )
 
 async def init_db():
