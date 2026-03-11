@@ -1,15 +1,44 @@
-from datetime import datetime , timezone
+"""
+Telemetry data models for the Smart Greenhouse system.
+
+This module defines the data structures used to represent and persist
+environmental sensor readings from greenhouse devices.
+"""
+
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 from sqlmodel import SQLModel, Field
 
 
 class TelemetryReading(SQLModel, table=True):
-    id : Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
-    temperature : float
-    humidity : float
+    """
+    Represents a single environmental telemetry reading from a greenhouse device.
 
-    timestamp : datetime = Field(
-        default_factory = lambda: datetime.now(timezone.utc)
+    This model captures environmental metrics (temperature, humidity) along with
+    metadata (timestamp, device identifier) for each sensor reading. It is designed
+    to be persisted in a PostgreSQL database using SQLAlchemy ORM.
+
+    Attributes:
+        id (Optional[UUID]): Unique identifier for the telemetry reading.
+            Auto-generated UUID if not provided. Primary key for database persistence.
+        temperature (float): Temperature reading in Celsius from the greenhouse sensor.
+        humidity (float): Humidity percentage (0-100) from the greenhouse sensor.
+        timestamp (datetime): UTC timestamp indicating when the reading was recorded.
+            Defaults to the current UTC time if not explicitly set.
+        device_id (str): Identifier for the physical device/sensor that generated
+            this reading. Defaults to "strawberry_pi_01" (the primary greenhouse sensor).
+    """
+
+    # Unique identifier - automatically generated UUID, serves as primary key
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+
+    # Environmental metrics
+    temperature: float
+    humidity: float
+
+    # Metadata fields
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
     )
-    device_id : str = "strawberry_pi_01"
+    device_id: str = "strawberry_pi_01"
