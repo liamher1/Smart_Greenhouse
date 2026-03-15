@@ -1,18 +1,50 @@
-
+# This section defines the services that make up the application.
 services:
+  # The 'db' service runs the PostgreSQL database container.
   db:
+    # Specifies the official PostgreSQL 15 image from Docker Hub.
     image: postgres:15
+    # Ensures the container restarts automatically if it stops.
     restart: always
+    # Sets environment variables for the database configuration.
+    # These variables are sourced from a .env file or the shell environment.
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+    # Maps port 5432 on the host to port 5432 in the container for database access.
     ports:
       - "5432:5432"
 
+  # The 'mqtt' service runs the Mosquitto MQTT broker.
   mqtt:
+    # Specifies the latest official Eclipse Mosquitto image.
     image: eclipse-mosquitto:latest
+    # Ensures the container restarts automatically if it stops.
     restart: always
+    # Maps port 1883 on the host to port 1883 in the container for MQTT communication.
     ports:
       - "1883:1883"
-    command: mosquitto -c /mosquitto-no-auth.conf
+    # Mounts a local configuration file into the container.
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    # Overrides the default command to start Mosquitto with a specific configuration.
+    command: mosquitto -c /mosquitto/config/mosquitto.conf
+
+  # The 'app' service runs the main application.
+  app:
+    # Builds a Docker image from the Dockerfile in the current directory.
+    build: .
+    # Mounts the current directory into the /app directory in the container for development.
+    volumes:
+      - .:/app
+    # Sets environment variables for the application.
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      MQTT_BROKER: mqtt
+      MQTT_PORT: 1883
+    # Specifies that the 'app' service depends on the 'db' and 'mqtt' services.
+    # This ensures that the 'db' and 'mqtt' containers are started before the 'app' container.
+    depends_on:
+      - db
+      - mqtt
