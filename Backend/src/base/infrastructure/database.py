@@ -1,14 +1,16 @@
-import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
-from dotenv import load_dotenv
+
+from Backend.config import config
 
 # Import models here so SQLModel knows which tables to create
 from Backend.src.features.telemetry.models import TelemetryReading
 
-load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = (
+    f"postgresql+asyncpg://{config.DB_USER}:{config.DB_PASSWORD}"
+    f"@{config.DB_HOST}:{config.DB_PORT}/{config.DB_NAME}"
+)
 
 # Create the async engine for PostgreSQL connection
 # echo=True allows us to see the actual SQL queries in the logs

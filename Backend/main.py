@@ -1,23 +1,17 @@
 import asyncio
-import os
+import sys
 from loguru import logger
-from dotenv import load_dotenv
+
+from config import config
 
 from src.base.infrastructure.database import init_db, async_session_maker
 from src.base.infrastructure.message_bus import MessageBus
-from src.base.infrastructure.mqtt_adapter import MQTTAdapter
+from src.base.infrastructure.mqtt_driver import MqttDriver
 
 from src.features.telemetry.repository import TelemetryRepository
 from src.features.telemetry.handlers import TelemetryEventHandler
-from src.features.telemetry.events import TelemetryUpdatedEvent
-from src.features.telemetry.entrypoints import TelemetryEntrypoint
-from src.features.control.entrypoints import register_control_entrypoints
-from src.features.control.handlers import ControlEventHandler
-from src.features.control.events import CommandAcknowledgedEvent
-
-load_dotenv()
-
-
+from src.features.telemetry.events import TelemetryRecorded
+from src.features.telemetry.controllers import TelemetryController
 
 async def start_app():
     """
@@ -43,20 +37,15 @@ async def start_app():
     session = async_session_maker()
     telemetry_repo = TelemetryRepository(session)
     telemetry_handler = TelemetryEventHandler(telemetry_repository=telemetry_repo)
-    message_bus.subscribe(TelemetryUpdatedEvent, telemetry_handler)
+    message_bus.subscribe(TelemetryRecorded, telemetry_handler)
     logger.info("Telemetry feature wired up.")
 
-    # 4. Setup Control Feature (Handler -> Subs)
-    control_handler = ControlEventHandler()
-    message_bus.subscribe(CommandAcknowledgedEvent, control_handler)
-    logger.info("Control feature wired up.")
-
-    # 5. Setup MQTT Infrastructure
-    mqtt_broker = os.getenv("MQTT_BROKER", "localhost")
-    mqtt_port = int(os.getenv("MQTT_PORT", "1883"))
-    mqtt_client_id = os.getenv("MQTT_CLIENT_ID", "backend_service")
+    # 4. Setup MQTT Infrastructure
+    mqtt_broker = config.MQTT_BROKER_IP
+    mqtt_port = config.MQTT_PORT
+    mqtt_client_id = "backend_service"
     
-    adapter = MQTTAdapter(
+    adapter = MqttDriver(
         broker_url=mqtt_broker, 
         broker_port=mqtt_port,
         client_id=mqtt_client_id
@@ -65,15 +54,12 @@ async def start_app():
     # 6. Register Entrypoints (Callback -> Adapter)
     
     # Telemetry Entrypoint
-    telemetry_entrypoint = TelemetryEntrypoint(message_bus)
+    telemetry_entrypoint = TelemetryController(message_bus)
     # Use the decorator-style registration manually
     adapter.on_message("greenhouse/telemetry/+")(telemetry_entrypoint.handle_reading)
-    logger.info("Registered TelemetryEntrypoint on greenhouse/telemetry/+")
+    logger.info("Registered TelemetryController on greenhouse/telemetry/+")
 
-    # Control Entrypoint (ACKs)
-    register_control_entrypoints(adapter, message_bus)
-    
-    # 7. Start the Application Loop
+    # 6. Start the Application Loop
     try:
         await adapter.connect()
         logger.success(f"Connected to MQTT Broker at {mqtt_broker}:{mqtt_port}")
@@ -82,13 +68,20 @@ async def start_app():
         await adapter.run()
     except KeyboardInterrupt:
         logger.info("Stopping backend...")
+    except Exception as e:
+        logger.error(f"MQTT runtime failed: {e}")
     finally:
         await adapter.disconnect()
         await session.close()
         logger.success("Backend shutdown complete.")
 
+       
+
 
 if __name__ == "__main__":
+    if sys.platform.startswith("win"):
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     try:
         asyncio.run(start_app())
     except KeyboardInterrupt:

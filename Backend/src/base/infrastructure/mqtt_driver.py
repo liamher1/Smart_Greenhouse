@@ -1,5 +1,5 @@
 """
-Generic MQTT Adapter for the infrastructure layer.
+Generic MQTT Driver for the infrastructure layer.
 
 This adapter handles the low-level details of connecting to an MQTT broker
 and subscribing to topics. It uses a decorator-based approach for registering
@@ -14,7 +14,7 @@ import aiomqtt
 from loguru import logger
 
 
-class MQTTAdapter:
+class MqttDriver:
     """
     Manages MQTT connection and message routing.
     """
@@ -23,6 +23,7 @@ class MQTTAdapter:
         self.broker_url = broker_url
         self.broker_port = broker_port
         self.client_id = client_id
+        self._client_cm = None
         self._client = None
         self._callbacks: Dict[str, List[Callable]] = {}
         self._pending_responses: Dict[str, asyncio.Future] = {}
@@ -43,18 +44,27 @@ class MQTTAdapter:
         """
         Connects to the MQTT broker.
         """
+        if self._client is not None:
+            return
+
         logger.info(f"Connecting to MQTT broker at {self.broker_url}:{self.broker_port}...")
-        self._client = aiomqtt.Client(hostname=self.broker_url, port=self.broker_port, identifier=self.client_id)
-        await self._client.connect()
-        logger.success("MQTT Adapter connected.")
+        self._client_cm = aiomqtt.Client(
+            hostname=self.broker_url,
+            port=self.broker_port,
+            identifier=self.client_id,
+        )
+        self._client = await self._client_cm.__aenter__()
+        logger.success("MQTT Driver connected.")
 
     async def disconnect(self):
         """
         Disconnects from the MQTT broker.
         """
-        if self._client:
-            await self._client.disconnect()
-            logger.info("MQTT Adapter disconnected.")
+        if self._client_cm:
+            await self._client_cm.__aexit__(None, None, None)
+            self._client_cm = None
+            self._client = None
+            logger.info("MQTT Driver disconnected.")
 
     async def publish(self, topic: str, payload: Union[Dict, str, bytes], qos: int = 0) -> bool:
         """
@@ -194,21 +204,20 @@ class MQTTAdapter:
         if not self._client:
             await self.connect()
 
-        async with self._client as client:
-            for topic in self._callbacks.keys():
-                # MQTT subscribe needs the pattern (e.g., "telemetry/+")
-                await client.subscribe(topic)
-                logger.info(f"Subscribed to topic: {topic}")
+        for topic in self._callbacks.keys():
+            # MQTT subscribe needs the pattern (e.g., "telemetry/+")
+            await self._client.subscribe(topic)
+            logger.info(f"Subscribed to topic: {topic}")
 
-            logger.info("MQTT Adapter is running and listening for messages...")
-            async for message in client.messages:
-                topic = message.topic.value
-                logger.debug(f"Received message on topic: {topic}")
-                
-                # Iterate over all registered patterns to find matches
-                for pattern, callbacks in self._callbacks.items():
-                    if self._topic_matches(pattern, topic):
-                        for callback in callbacks:
-                            # Fire and forget
-                            asyncio.create_task(callback(topic, message.payload))
+        logger.info("MQTT Driver is running and listening for messages...")
+        async for message in self._client.messages:
+            topic = message.topic.value
+            logger.debug(f"Received message on topic: {topic}")
+
+            # Iterate over all registered patterns to find matches
+            for pattern, callbacks in self._callbacks.items():
+                if self._topic_matches(pattern, topic):
+                    for callback in callbacks:
+                        # Fire and forget
+                        asyncio.create_task(callback(topic, message.payload))
 

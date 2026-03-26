@@ -20,12 +20,14 @@ class MessageBus:
         if event_type not in self._event_handlers:
             self._event_handlers[event_type] = []
         self._event_handlers[event_type].append(handler)
-        logger.debug(f"Subscribed {handler.__name__} to {event_type.__name__}")
+        handler_name = getattr(handler, "__name__", handler.__class__.__name__)
+        logger.debug(f"Subscribed {handler_name} to {event_type.__name__}")
 
     def register_command(self, command_type: Type, handler: Callable):
         """Register a handler to execute a specific command"""
         self._command_handlers[command_type] = handler
-        logger.debug(f"Registered {handler.__name__} for {command_type.__name__}")
+        handler_name = getattr(handler, "__name__", handler.__class__.__name__)
+        logger.debug(f"Registered {handler_name} for {command_type.__name__}")
 
     async def handle(self, message: Any):
         """Routes the message based on whether it's a Command or an Event"""

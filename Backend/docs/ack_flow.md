@@ -48,7 +48,7 @@ We implemented a request-response pattern over MQTT using `asyncio.Future` to pa
 ---
 
 ### 4. Resuming Execution
-**Component:** `MQTTAdapter` (Infrastructure)
+**Component:** `MqttDriver` (Infrastructure)
 **Action:** Completes the waiting Future.
 
 1.  **Lookup:** The adapter finds the `Future` associated with `cmd_123`.

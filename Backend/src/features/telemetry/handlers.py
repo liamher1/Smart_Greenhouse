@@ -5,7 +5,7 @@ This module defines the handlers that process telemetry-related domain events,
 such as persisting new sensor readings to the database.
 """
 
-from Backend.src.features.telemetry.events import TelemetryUpdatedEvent
+from Backend.src.features.telemetry.events import TelemetryRecorded
 from Backend.src.features.telemetry.models import TelemetryReading
 from Backend.src.features.telemetry.repository import TelemetryRepository
 
@@ -24,12 +24,12 @@ class TelemetryEventHandler:
         """
         self.telemetry_repository = telemetry_repository
 
-    async def __call__(self, event: TelemetryUpdatedEvent) -> None:
+    async def __call__(self, event: TelemetryRecorded) -> None:
         """
-        Handles the TelemetryUpdatedEvent by creating and saving a new telemetry reading.
+        Handles the TelemetryRecorded event by creating and saving a new telemetry reading.
 
         Args:
-            event (TelemetryUpdatedEvent): The telemetry updated event to handle.
+            event (TelemetryRecorded): The telemetry recorded event to handle.
         """
         telemetry_reading = TelemetryReading(
             temperature=event.temperature,

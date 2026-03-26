@@ -40,7 +40,6 @@ services:
       - .:/app
     # Sets environment variables for the application.
     environment:
-      DATABASE_URL: postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       MQTT_BROKER: mqtt
       MQTT_PORT: 1883
     # Specifies that the 'app' service depends on the 'db' and 'mqtt' services.

@@ -22,7 +22,7 @@ class MessageHeader(BaseModel):
     timestamp: datetime = Field(..., description="The UTC timestamp when the message was sent.")
 
 
-class MessageEnvelope(BaseModel):
+class IncomingMqttDto(BaseModel):
     """
     The root model for any message received via MQTT.
 
