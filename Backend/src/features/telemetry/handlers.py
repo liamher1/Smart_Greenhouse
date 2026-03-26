@@ -37,3 +37,15 @@ class TelemetryEventHandler:
             device_id=event.device_id,
         )
         await self.telemetry_repository.add_telemetry_reading(telemetry_reading)
+
+
+async def handle_telemetry_recorded(
+    event: TelemetryRecorded,
+    telemetry_repository: TelemetryRepository,
+) -> None:
+    telemetry_reading = TelemetryReading(
+        temperature=event.temperature,
+        humidity=event.humidity,
+        device_id=event.device_id,
+    )
+    await telemetry_repository.add_telemetry_reading(telemetry_reading)

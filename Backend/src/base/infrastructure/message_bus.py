@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, List, Type
 from loguru import logger
 
 
-class MessageBus:
+class AsyncMessageBus:
     """
     The central communication hub of the application.
     Routes Commands to a single handler and Events to multiple subscribers.
@@ -59,3 +59,5 @@ class MessageBus:
         await asyncio.gather(*tasks, return_exceptions=True)
         #2
 
+
+MessageBus = AsyncMessageBus

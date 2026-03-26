@@ -4,14 +4,8 @@ from loguru import logger
 
 from config import config
 
-from src.base.infrastructure.database import init_db, async_session_maker
-from src.base.infrastructure.message_bus import MessageBus
 from src.base.infrastructure.mqtt_driver import MqttDriver
-
-from src.features.telemetry.repository import TelemetryRepository
-from src.features.telemetry.handlers import TelemetryEventHandler
-from src.features.telemetry.events import TelemetryRecorded
-from src.features.telemetry.controllers import TelemetryController
+from src.bootstrap import bootstrap_app
 
 async def start_app():
     """
@@ -19,25 +13,10 @@ async def start_app():
     """
     logger.info("Starting the greenhouse backend...")
 
-    # 1. Initialize Database
-    try:
-        await init_db()
-        logger.success("Database initialized and synced!")
-    except Exception as e:
-        logger.error(f"DB Init Failed: {e}")
-        # Continue with other services if DB fails (e.g. MQTT still needs to run)
-        # return
-
-    # 2. Initialize Message Bus
-    message_bus = MessageBus()
-    logger.info("Message Bus initialized.")
-
-    # 3. Setup Telemetry Feature (Repo -> Handler -> Subs)
-    # Note: Using a single session for simplicity. In production, use session per request.
-    session = async_session_maker()
-    telemetry_repo = TelemetryRepository(session)
-    telemetry_handler = TelemetryEventHandler(telemetry_repository=telemetry_repo)
-    message_bus.subscribe(TelemetryRecorded, telemetry_handler)
+    # 1. Bootstrap App
+    app = await bootstrap_app()
+    telemetry_controller = app["controller"]
+    db_connection = app["db_connection"]
     logger.info("Telemetry feature wired up.")
 
     # 4. Setup MQTT Infrastructure
@@ -54,9 +33,8 @@ async def start_app():
     # 6. Register Entrypoints (Callback -> Adapter)
     
     # Telemetry Entrypoint
-    telemetry_entrypoint = TelemetryController(message_bus)
     # Use the decorator-style registration manually
-    adapter.on_message("greenhouse/telemetry/+")(telemetry_entrypoint.handle_reading)
+    adapter.on_message("greenhouse/telemetry/+")(telemetry_controller.handle_reading)
     logger.info("Registered TelemetryController on greenhouse/telemetry/+")
 
     # 6. Start the Application Loop
@@ -72,7 +50,7 @@ async def start_app():
         logger.error(f"MQTT runtime failed: {e}")
     finally:
         await adapter.disconnect()
-        await session.close()
+        await db_connection.close()
         logger.success("Backend shutdown complete.")
 
        
