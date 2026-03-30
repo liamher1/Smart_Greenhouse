@@ -16,7 +16,7 @@ graph LR
     end
     
     subgraph "Interface Adapters (Entrypoints)"
-        TelEntry["TelemetryController<br/>(Translator)"]
+        TelEntry["TelemetryEntrypoint<br/>(Translator)"]
     end
     
     subgraph "Application Core (Domain)"
@@ -93,7 +93,7 @@ sequenceDiagram
     participant Device as ESP32 Device
     participant Broker as MQTT Broker
     participant Adapter as MqttDriver
-    participant Entrypoint as TelemetryController
+    participant Entrypoint as TelemetryEntrypoint
     participant Schema as IncomingMqttDto
     participant Bus as MessageBus
     participant Handler as TelemetryHandler
@@ -102,7 +102,7 @@ sequenceDiagram
     Device->>Broker: 1. Publish JSON<br/>{header: {...}, payload: {...}}
     Broker->>Adapter: 2. Deliver to greenhouse/telemetry/+
     Adapter->>Adapter: 3. Match topic pattern
-    Adapter->>Entrypoint: 4. Invoke handle_reading(topic, bytes)
+    Adapter->>Entrypoint: 4. Invoke on_telemetry_message(topic, bytes)
     
     activate Entrypoint
     Entrypoint->>Entrypoint: 5a. Decode bytes → UTF-8 string
@@ -190,7 +190,7 @@ Message Bus (only events) ←──────────
 
 ## Component Roles
 
-### 1. MQTT Adapter (`infrastructure/mqtt_adapter.py`)
+### 1. MQTT Adapter (`infrastructure/mqtt_driver.py`)
 - **Role**: The physical gateway.
 - **Responsibility**: 
   - Maintains TCP connection to broker.
@@ -206,7 +206,7 @@ Message Bus (only events) ←──────────
   - **Validates all data against schemas** (Pydantic IncomingMqttDto).
   - Extracts business-relevant fields.
   - Stops bad data from entering the core.
-- **Example** (`TelemetryController`):
+- **Example** (`TelemetryEntrypoint`):
   1. Decode bytes → JSON
   2. Validate against `IncomingMqttDto`
   3. Extract `temperature`, `humidity`, `device_id`

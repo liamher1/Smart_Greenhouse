@@ -11,7 +11,7 @@ from src.base.infrastructure.mqtt_driver import MqttDriver
 from src.features.telemetry.repository import TelemetryRepository
 from src.features.telemetry.handlers import TelemetryEventHandler
 from src.features.telemetry.events import TelemetryRecorded
-from src.features.telemetry.controllers import TelemetryController
+from src.features.telemetry.entrypoints import register_telemetry_entrypoint
 
 async def start_app():
     """
@@ -45,7 +45,7 @@ async def start_app():
     mqtt_port = config.MQTT_PORT
     mqtt_client_id = "backend_service"
     
-    adapter = MqttDriver(
+    mqtt_driver = MqttDriver(
         broker_url=mqtt_broker, 
         broker_port=mqtt_port,
         client_id=mqtt_client_id
@@ -53,25 +53,21 @@ async def start_app():
 
     # 6. Register Entrypoints (Callback -> Adapter)
     
-    # Telemetry Entrypoint
-    telemetry_entrypoint = TelemetryController(message_bus)
-    # Use the decorator-style registration manually
-    adapter.on_message("greenhouse/telemetry/+")(telemetry_entrypoint.handle_reading)
-    logger.info("Registered TelemetryController on greenhouse/telemetry/+")
+    register_telemetry_entrypoint(mqtt_driver, message_bus)
 
     # 6. Start the Application Loop
     try:
-        await adapter.connect()
+        await mqtt_driver.connect()
         logger.success(f"Connected to MQTT Broker at {mqtt_broker}:{mqtt_port}")
         
         # This will block and listen for messages
-        await adapter.run()
+        await mqtt_driver.run()
     except KeyboardInterrupt:
         logger.info("Stopping backend...")
     except Exception as e:
         logger.error(f"MQTT runtime failed: {e}")
     finally:
-        await adapter.disconnect()
+        await mqtt_driver.disconnect()
         await session.close()
         logger.success("Backend shutdown complete.")
 

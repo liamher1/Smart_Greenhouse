@@ -1,10 +1,4 @@
-"""
-Telemetry Controller.
-
-This module is the bridge between the MQTT Infrastructure and the Telemetry Feature.
-It defines the handler that receives raw MQTT messages, validates them against the
-strict IncomingMqttDto schema, and dispatches domain events.
-"""
+"""Telemetry entrypoints for inbound MQTT messages."""
 import json
 from loguru import logger
 from pydantic import ValidationError
@@ -14,7 +8,7 @@ from Backend.src.base.infrastructure.message_bus import MessageBus
 from Backend.src.features.telemetry.events import TelemetryRecorded
 
 
-class TelemetryController:
+class TelemetryEntrypoint:
     """
     Handles incoming telemetry messages from MQTT.
     """
@@ -22,7 +16,7 @@ class TelemetryController:
     def __init__(self, message_bus: MessageBus):
         self._bus = message_bus
 
-    async def handle_reading(self, topic: str, payload: bytes):
+    async def on_telemetry_message(self, topic: str, payload: bytes):
         """
         Process a raw MQTT message for telemetry.
 
@@ -37,10 +31,10 @@ class TelemetryController:
         try:
             # 1. & 2. Decode and Parse
             data = json.loads(payload.decode("utf-8"))
-            
+
             # 3. Validate Envelope
             envelope = IncomingMqttDto(**data)
-            
+
             # Verify message type (optional extra check)
             if envelope.header.type != "telemetry":
                 logger.warning(f"Ignored message with type '{envelope.header.type}' on telemetry topic.")
@@ -69,17 +63,15 @@ class TelemetryController:
             logger.error(f"Error handling telemetry message: {str(e)}")
 
 
-def register_entrypoints(adapter, message_bus: MessageBus):
+def register_telemetry_entrypoint(mqtt_driver, message_bus: MessageBus):
     """
     Registration helper to wire up the entrypoint with the adapter.
     This avoids global dependency injection issues.
     """
-    entrypoint = TelemetryController(message_bus)
-    
+    entrypoint = TelemetryEntrypoint(message_bus)
+
     # Register with the decorator-like method
-    # Effectively: @adapter.on_message("greenhouse/telemetry/+")
-    adapter.on_message("greenhouse/telemetry/+")(entrypoint.handle_reading)
-    logger.info("Registered TelemetryController handlers.")
-
-
+    # Effectively: @mqtt_driver.on_message("greenhouse/telemetry/+")
+    mqtt_driver.on_message("greenhouse/telemetry/+")(entrypoint.on_telemetry_message)
+    logger.info("Registered TelemetryEntrypoint handlers.")
 

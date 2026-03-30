@@ -3,7 +3,7 @@
 ## Overview
 **File:** `Backend/src/features/telemetry/entrypoints.py`
 
-This module serves as the **Interface Interface Adapter** for the Telemetry feature. It acts as the bridge between the external MQTT Infrastructure and the internal Domain Layer.
+This module serves as the **Interface Adapter** for the Telemetry feature. It acts as the bridge between the external MQTT infrastructure and the internal domain layer.
 
 It is responsible for:
 1.  Receiving raw MQTT messages.
@@ -13,7 +13,7 @@ It is responsible for:
 
 ---
 
-## Class: `TelemetryController`
+## Class: `TelemetryEntrypoint`
 
 ### Constructor `__init__`
 ```python
@@ -22,9 +22,9 @@ def __init__(self, message_bus: MessageBus):
 - **Purpose**: Initializes the entrypoint with a reference to the `MessageBus`.
 - **Dependency**: Requires a valid `MessageBus` instance to dispatch events into the system.
 
-### `handle_reading`
+### `on_telemetry_message`
 ```python
-async def handle_reading(self, topic: str, payload: bytes):
+async def on_telemetry_message(self, topic: str, payload: bytes):
 ```
 - **Purpose**: The main callback function executed when an MQTT message arrives on the telemetry topic.
 - **Arguments**:
@@ -36,8 +36,8 @@ async def handle_reading(self, topic: str, payload: bytes):
         - Wraps the data in a `IncomingMqttDto` Pydantic model.
         - Ensures the message structure (Header + Payload) is valid.
     3.  **Type Check**: Verifies the `header.type` is explicitly "telemetry".
-    4.  **Payload Extraction**: Validates that specific fields (`temperature`, `humidity`) exist in the payload dictionary.
-    5.  **Event Creation**: Instantiates a `TelemetryRecorded` domain object.
+    4.  **Payload Extraction**: Extracts payload fields and injects `device_id` from the envelope header.
+    5.  **Event Creation**: Instantiates a `TelemetryRecorded` domain model.
     6.  **Dispatch**: Sends the event to the `MessageBus` for handling by business logic handlers.
 
 - **Error Handling**:
@@ -49,13 +49,13 @@ async def handle_reading(self, topic: str, payload: bytes):
 
 ## Functions
 
-### `register_entrypoints`
+### `register_telemetry_entrypoint`
 ```python
-def register_entrypoints(adapter, message_bus: MessageBus):
+def register_telemetry_entrypoint(mqtt_driver, message_bus: MessageBus):
 ```
 - **Purpose**: Wiring function to connect this feature to the infrastructure.
 - **Logic**:
-    1.  Instantiates `TelemetryController` with the provided `message_bus`.
-    2.  Uses the `adapter.on_message` method to register `entrypoint.handle_reading` to the topic pattern `greenhouse/telemetry/+`.
+    1.  Instantiates `TelemetryEntrypoint` with the provided `message_bus`.
+    2.  Uses the `mqtt_driver.on_message` method to register `entrypoint.on_telemetry_message` to the topic pattern `greenhouse/telemetry/+`.
     -   The `+` wildcard allows capturing messages from any partial topic at that level (e.g., any device ID).
 

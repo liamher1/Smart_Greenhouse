@@ -1,7 +1,7 @@
 # MQTT Adapter Documentation
 
 ## Overview
-**File:** `Backend/src/base/infrastructure/mqtt_adapter.py`
+**File:** `Backend/src/base/infrastructure/mqtt_driver.py`
 
 The `MqttDriver` class serves as the **Infrastructure Layer** gateway for all MQTT communication. It adheres to Clean Architecture principles by isolating low-level protocol details (using `aiomqtt`) from the business logic.
 
