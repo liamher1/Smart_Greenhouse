@@ -32,8 +32,8 @@ class TelemetryRepository:
         """
         Persist a new telemetry reading to the database.
 
-        Adds a new telemetry reading to the database session, commits the transaction,
-        and refreshes the object to populate database-generated fields like UUID and Timestamp.
+        Adds a new telemetry reading to the database session and flushes pending SQL.
+        Transaction boundaries (commit/rollback) are managed by the caller.
 
         Args:
             telemetry_reading (TelemetryReading): The telemetry reading object to persist.
@@ -43,20 +43,16 @@ class TelemetryRepository:
 
         Raises:
             sqlalchemy.exc.SQLAlchemyError: If a database error occurs during
-                insertion, commit, or refresh operations.
+                insertion or flush operations.
 
         Note:
             The provided telemetry_reading object is modified in-place to reflect
             any database-generated values (e.g., auto-generated UUID if not provided).
         """
-        # Stage the telemetry reading in the session for insertion
+        # Stage entity in the current unit of work; commit is managed upstream.
         self.session.add(telemetry_reading)
-        # Commit the transaction to persist changes to the PostgreSQL database
-        await self.session.commit()
-
-        # Synchronize the Python object with the database record to ensure
-        # it reflects any server-generated values (UUID, timestamp, etc.)
-        await self.session.refresh(telemetry_reading)
+        # Flush to surface DB errors inside the current transaction scope.
+        await self.session.flush()
 
 
 

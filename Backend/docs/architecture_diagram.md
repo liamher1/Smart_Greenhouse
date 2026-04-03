@@ -188,6 +188,18 @@ Message Bus (only events) ←──────────
 
 ---
 
+## Session and Transaction Boundary Policy
+
+- Each inbound telemetry message is processed with a **fresh AsyncSession**.
+- The transaction is opened in the application layer with `async with session.begin()`.
+- Repository methods do not own transaction boundaries (`commit`/`rollback`); they only `add` + `flush`.
+- If persistence fails, the active transaction is rolled back and the session is closed.
+- A failed session is never reused for another message.
+
+This keeps session lifecycle explicit, prevents cross-message coupling, and makes error-handling behavior easy to test.
+
+---
+
 ## Component Roles
 
 ### 1. MQTT Adapter (`infrastructure/mqtt_driver.py`)

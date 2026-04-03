@@ -8,7 +8,6 @@ from src.base.infrastructure.database import init_db, async_session_maker
 from src.base.infrastructure.message_bus import MessageBus
 from src.base.infrastructure.mqtt_driver import MqttDriver
 
-from src.features.telemetry.repository import TelemetryRepository
 from src.features.telemetry.handlers import TelemetryEventHandler
 from src.features.telemetry.events import TelemetryRecorded
 from src.features.telemetry.entrypoints import register_telemetry_entrypoint
@@ -32,11 +31,8 @@ async def start_app():
     message_bus = MessageBus()
     logger.info("Message Bus initialized.")
 
-    # 3. Setup Telemetry Feature (Repo -> Handler -> Subs)
-    # Note: Using a single session for simplicity. In production, use session per request.
-    session = async_session_maker()
-    telemetry_repo = TelemetryRepository(session)
-    telemetry_handler = TelemetryEventHandler(telemetry_repository=telemetry_repo)
+    # 3. Setup Telemetry Feature with per-message session boundaries.
+    telemetry_handler = TelemetryEventHandler(session_factory=async_session_maker)
     message_bus.subscribe(TelemetryRecorded, telemetry_handler)
     logger.info("Telemetry feature wired up.")
 
@@ -68,7 +64,6 @@ async def start_app():
         logger.error(f"MQTT runtime failed: {e}")
     finally:
         await mqtt_driver.disconnect()
-        await session.close()
         logger.success("Backend shutdown complete.")
 
        
