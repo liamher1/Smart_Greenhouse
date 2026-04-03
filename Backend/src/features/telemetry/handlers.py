@@ -60,6 +60,7 @@ class TelemetryEventHandler:
                         temperature=event.temperature,
                         humidity=event.humidity,
                         device_id=event.device_id,
+                        timestamp=event.timestamp,
                     )
 
                     # Stage + flush the reading through repository logic.

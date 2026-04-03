@@ -24,10 +24,10 @@ class TelemetryReading(SQLModel, table=True):
             Auto-generated UUID if not provided. Primary key for database persistence.
         temperature (float): Temperature reading in Celsius from the greenhouse sensor.
         humidity (float): Humidity percentage (0-100) from the greenhouse sensor.
-        timestamp (datetime): UTC timestamp indicating when the reading was recorded.
-            Defaults to the current UTC time if not explicitly set.
+        timestamp (datetime): UTC timestamp from the originating device message.
+            Defaults to the current UTC time only if not explicitly set.
         device_id (str): Identifier for the physical device/sensor that generated
-            this reading. Defaults to "strawberry_pi_01" (the primary greenhouse sensor).
+            this reading.
     """
 
     # Unique identifier - automatically generated UUID, serves as primary key
@@ -41,4 +41,4 @@ class TelemetryReading(SQLModel, table=True):
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
-    device_id: str = "strawberry_pi_01"
+    device_id: str
