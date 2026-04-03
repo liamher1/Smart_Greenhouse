@@ -43,6 +43,8 @@ class TelemetryEntrypoint:
             # 4. Extract Payload
             payload_data = dict(envelope.payload)
             payload_data["device_id"] = envelope.header.device_id
+            # Timestamp policy: use device timestamp from validated message header.
+            payload_data["timestamp"] = envelope.header.timestamp
 
             # 5. Validate & Create Domain Event
             try:

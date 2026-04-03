@@ -1,4 +1,7 @@
-from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 
 class TelemetryRecorded(BaseModel):
@@ -16,7 +19,10 @@ class TelemetryRecorded(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    temperature: float
-    humidity: float
-    device_id: str
+    # Wide operational range to support different greenhouse deployments.
+    temperature: float = Field(ge=-40.0, le=85.0)
+    humidity: float = Field(ge=0.0, le=100.0)
+    device_id: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+    # Device-reported timestamp from the MQTT message header.
+    timestamp: datetime
 
