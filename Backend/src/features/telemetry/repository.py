@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from Backend.src.features.telemetry.models import TelemetryReading
+from Backend.src.features.telemetry.models import TelemetryReading, FailedMessage
 from sqlalchemy import select
 
 
@@ -58,6 +58,21 @@ class TelemetryRepository:
         # it reflects any server-generated values (UUID, timestamp, etc.)
         await self.session.refresh(telemetry_reading)
 
+    async def add_failed_message(self, failed_message: FailedMessage) -> None:
+        """
+        Persist a failed/dead-letter message record to the database.
 
+        Args:
+            failed_message (FailedMessage): The dead-letter record to persist.
 
+        Returns:
+            None
+
+        Raises:
+            sqlalchemy.exc.SQLAlchemyError: If a database error occurs during
+                insertion or commit.
+        """
+        self.session.add(failed_message)
+        await self.session.commit()
+        await self.session.refresh(failed_message)
 

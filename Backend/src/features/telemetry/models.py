@@ -2,7 +2,8 @@
 Telemetry data models for the Smart Greenhouse system.
 
 This module defines the data structures used to represent and persist
-environmental sensor readings from greenhouse devices.
+environmental sensor readings from greenhouse devices, as well as a
+dead-letter table for messages that could not be fully processed.
 """
 
 from datetime import datetime, timezone
@@ -42,3 +43,29 @@ class TelemetryReading(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc)
     )
     device_id: str = "strawberry_pi_01"
+
+
+class FailedMessage(SQLModel, table=True):
+    """
+    Dead-letter record for MQTT messages that could not be fully processed.
+
+    When a message fails at any stage (JSON decode, schema validation, or
+    database persistence), its raw payload and the reason for the failure are
+    stored here so that operators can inspect and replay them.
+
+    Attributes:
+        id (Optional[UUID]): Auto-generated primary key.
+        topic (str): The MQTT topic the message arrived on.
+        raw_payload (str): The raw message payload as a UTF-8 string (or the
+            original bytes repr if decoding failed).
+        failure_reason (str): Human-readable description of why the message failed.
+        failed_at (datetime): UTC timestamp of when the failure was recorded.
+    """
+
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    topic: str
+    raw_payload: str
+    failure_reason: str
+    failed_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )

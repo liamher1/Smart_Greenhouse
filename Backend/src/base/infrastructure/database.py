@@ -5,7 +5,7 @@ from sqlmodel import SQLModel
 from Backend.config import config
 
 # Import models here so SQLModel knows which tables to create
-from Backend.src.features.telemetry.models import TelemetryReading
+from Backend.src.features.telemetry.models import TelemetryReading, FailedMessage  # noqa: F401
 
 DATABASE_URL = (
     f"postgresql+asyncpg://{config.DB_USER}:{config.DB_PASSWORD}"

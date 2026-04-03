@@ -12,6 +12,7 @@ from src.features.telemetry.repository import TelemetryRepository
 from src.features.telemetry.handlers import TelemetryEventHandler
 from src.features.telemetry.events import TelemetryRecorded
 from src.features.telemetry.entrypoints import register_telemetry_entrypoint
+from src.features.telemetry.metrics import TelemetryMetrics
 
 async def start_app():
     """
@@ -32,15 +33,18 @@ async def start_app():
     message_bus = MessageBus()
     logger.info("Message Bus initialized.")
 
-    # 3. Setup Telemetry Feature (Repo -> Handler -> Subs)
+    # 3. Setup Metrics
+    metrics = TelemetryMetrics()
+
+    # 4. Setup Telemetry Feature (Repo -> Handler -> Subs)
     # Note: Using a single session for simplicity. In production, use session per request.
     session = async_session_maker()
     telemetry_repo = TelemetryRepository(session)
-    telemetry_handler = TelemetryEventHandler(telemetry_repository=telemetry_repo)
+    telemetry_handler = TelemetryEventHandler(telemetry_repository=telemetry_repo, metrics=metrics)
     message_bus.subscribe(TelemetryRecorded, telemetry_handler)
     logger.info("Telemetry feature wired up.")
 
-    # 4. Setup MQTT Infrastructure
+    # 5. Setup MQTT Infrastructure
     mqtt_broker = config.MQTT_BROKER_IP
     mqtt_port = config.MQTT_PORT
     mqtt_client_id = "backend_service"
@@ -52,10 +56,9 @@ async def start_app():
     )
 
     # 6. Register Entrypoints (Callback -> Adapter)
-    
-    register_telemetry_entrypoint(mqtt_driver, message_bus)
+    register_telemetry_entrypoint(mqtt_driver, message_bus, metrics=metrics, repository=telemetry_repo)
 
-    # 6. Start the Application Loop
+    # 7. Start the Application Loop
     try:
         await mqtt_driver.connect()
         logger.success(f"Connected to MQTT Broker at {mqtt_broker}:{mqtt_port}")
@@ -67,11 +70,10 @@ async def start_app():
     except Exception as e:
         logger.error(f"MQTT runtime failed: {e}")
     finally:
+        logger.info("Telemetry metrics on shutdown", **metrics.as_dict())
         await mqtt_driver.disconnect()
         await session.close()
         logger.success("Backend shutdown complete.")
-
-       
 
 
 if __name__ == "__main__":
