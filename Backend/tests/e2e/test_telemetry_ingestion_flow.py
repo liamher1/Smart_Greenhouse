@@ -104,5 +104,6 @@ class TestTelemetryIngestionE2E(unittest.IsolatedAsyncioTestCase):
 
 
 if __name__ == "__main__":
+    #test
     unittest.main()
 
