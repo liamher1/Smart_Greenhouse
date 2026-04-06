@@ -7,7 +7,7 @@ from Backend.src.base.infrastructure.schemas import IncomingMqttDto
 from Backend.src.base.infrastructure.message_bus import MessageBus
 from Backend.src.features.telemetry.events import TelemetryRecorded
 
-
+#test
 class TelemetryEntrypoint:
     """
     Handles incoming telemetry messages from MQTT.
