@@ -2,10 +2,10 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 
-from Backend.config import config
+from config import config
 
 # Import models here so SQLModel knows which tables to create
-from Backend.src.features.telemetry.models import TelemetryReading
+from features.telemetry.models import TelemetryReading
 
 DATABASE_URL = (
     f"postgresql+asyncpg://{config.DB_USER}:{config.DB_PASSWORD}"

@@ -3,9 +3,9 @@ import json
 from loguru import logger
 from pydantic import ValidationError
 
-from Backend.src.base.infrastructure.schemas import IncomingMqttDto
-from Backend.src.base.infrastructure.message_bus import MessageBus
-from Backend.src.features.telemetry.events import TelemetryRecorded
+from base.infrastructure.schemas import IncomingMqttDto
+from base.infrastructure.message_bus import MessageBus
+from features.telemetry.events import TelemetryRecorded
 
 #test
 class TelemetryEntrypoint:

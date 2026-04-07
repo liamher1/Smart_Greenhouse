@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from Backend.src.features.telemetry.models import TelemetryReading
-from sqlalchemy import select
+
+from .models import TelemetryReading
 
 
 class TelemetryRepository:

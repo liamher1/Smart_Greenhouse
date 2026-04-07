@@ -4,13 +4,13 @@ from loguru import logger
 
 from config import config
 
-from src.base.infrastructure.database import init_db, async_session_maker
-from src.base.infrastructure.message_bus import MessageBus
-from src.base.infrastructure.mqtt_driver import MqttDriver
+from base.infrastructure.database import init_db, async_session_maker
+from base.infrastructure.message_bus import MessageBus
+from base.infrastructure.mqtt_driver import MqttDriver
 
-from src.features.telemetry.handlers import TelemetryEventHandler
-from src.features.telemetry.events import TelemetryRecorded
-from src.features.telemetry.entrypoints import register_telemetry_entrypoint
+from features.telemetry.handlers import TelemetryEventHandler
+from features.telemetry.events import TelemetryRecorded
+from features.telemetry.entrypoints import register_telemetry_entrypoint
 
 async def start_app():
     """

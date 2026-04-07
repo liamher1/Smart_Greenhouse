@@ -9,9 +9,9 @@ from typing import Callable
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from Backend.src.features.telemetry.events import TelemetryRecorded
-from Backend.src.features.telemetry.models import TelemetryReading
-from Backend.src.features.telemetry.repository import TelemetryRepository
+from features.telemetry.events import TelemetryRecorded
+from features.telemetry.models import TelemetryReading
+from features.telemetry.repository import TelemetryRepository
 
 
 class TelemetryEventHandler:

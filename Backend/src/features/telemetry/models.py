@@ -8,6 +8,7 @@ environmental sensor readings from greenhouse devices.
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
+from sqlalchemy import Column, DateTime
 from sqlmodel import SQLModel, Field
 
 
@@ -38,7 +39,9 @@ class TelemetryReading(SQLModel, table=True):
     humidity: float
 
     # Metadata fields
+    # Persist as TIMESTAMPTZ because device payloads include UTC offset.
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
     )
     device_id: str

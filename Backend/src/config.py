@@ -4,7 +4,7 @@ from pathlib import Path
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=Path(__file__).with_name(".env"),
+        env_file=Path(__file__).resolve().parent.parent / ".env",
         extra="ignore",
     )
 
