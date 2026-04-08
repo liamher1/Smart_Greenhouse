@@ -48,7 +48,7 @@ async def start_app():
     )
 
     # 6. Register Entrypoints (Callback -> Adapter)
-    
+
     register_telemetry_entrypoint(mqtt_driver, message_bus)
 
     # 6. Start the Application Loop
