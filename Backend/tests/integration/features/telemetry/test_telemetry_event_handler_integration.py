@@ -44,6 +44,7 @@ async def db_session_factory(postgres_url: str):
 
 
 async def test_handler_persists_telemetry_to_real_postgres(db_session_factory) -> None:
+    """Verify the real handler persists a telemetry event into PostgreSQL."""
     handler = TelemetryEventHandler(
         session_factory=db_session_factory,
         repository_factory=TelemetryRepository,

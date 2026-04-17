@@ -70,6 +70,7 @@ class FakeRepository:
 
 @pytest.mark.asyncio
 async def test_handler_opens_transaction_saves_and_closes_session() -> None:
+    """Verify the handler opens a session, saves the reading, and closes cleanly."""
     session = FakeSession()
     repository = FakeRepository(session)
 
@@ -111,6 +112,7 @@ async def test_handler_opens_transaction_saves_and_closes_session() -> None:
 
 @pytest.mark.asyncio
 async def test_handler_rolls_back_and_reraises_when_repository_fails() -> None:
+    """Verify repository failures trigger rollback and are re-raised to the caller."""
     session = FakeSession()
     repository = FakeRepository(session, should_fail=True)
 

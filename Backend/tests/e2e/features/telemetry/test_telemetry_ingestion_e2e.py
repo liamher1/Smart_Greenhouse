@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+"""End-to-end telemetry ingestion test.
+
+This module verifies the full MQTT-to-PostgreSQL path:
+an external publisher sends a telemetry JSON payload to the broker,
+the application's MQTT driver receives it, the telemetry entrypoint
+creates a domain event, and the event handler persists the reading.
+"""
+
 import asyncio
 from contextlib import suppress
 from datetime import datetime, timezone
@@ -28,18 +36,29 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.e2e]
 
 @pytest.fixture(scope="module")
 def require_optional_deps() -> None:
-    """Skip E2E tests when optional runtime dependencies are not installed."""
+    """Skip this module when optional E2E runtime dependencies are missing.
+
+    The test requires both `aiomqtt` for real MQTT publishing and
+    `testcontainers` for spinning up ephemeral infrastructure.
+    """
     pytest.importorskip("aiomqtt", reason="aiomqtt is required for MQTT E2E test")
     pytest.importorskip("testcontainers", reason="testcontainers is required for E2E test")
 
 
 @pytest.fixture(scope="module")
 def require_docker(require_optional_deps) -> None:
-    """Skip E2E tests when Docker SDK/daemon is unavailable on this machine."""
+    """Skip the test if Docker is not available locally.
+
+    `testcontainers` depends on a working Docker daemon, so this guard
+    ensures the E2E test fails fast with a clear skip reason instead of
+    producing container startup errors.
+    """
     try:
         import docker
         from docker.errors import DockerException
     except ImportError as exc:
+        docker = None  # type: ignore[assignment]
+        DockerException = Exception  # type: ignore[assignment]
         pytest.skip(f"Docker SDK is required for E2E testcontainers tests: {exc}")
 
     client = None
@@ -55,6 +74,12 @@ def require_docker(require_optional_deps) -> None:
 
 @pytest.fixture(scope="module")
 def postgres_url(require_docker) -> str:
+    """Start a disposable PostgreSQL container and yield its async URL.
+
+    The fixture converts the synchronous testcontainer URL into an
+    `asyncpg`-compatible SQLAlchemy connection string for the async test
+    session factory.
+    """
     from docker.errors import DockerException
 
     PostgresContainer = pytest.importorskip(
@@ -75,6 +100,11 @@ def postgres_url(require_docker) -> str:
 
 @pytest.fixture(scope="module")
 def mqtt_broker_endpoint(require_docker) -> tuple[str, int]:
+    """Start a disposable Mosquitto container and yield its host/port.
+
+    The returned endpoint is used by both the backend consumer and the
+    external test publisher so the test exercises a real broker.
+    """
     from docker.errors import DockerException
 
     DockerContainer = pytest.importorskip(
@@ -108,6 +138,11 @@ def mqtt_broker_endpoint(require_docker) -> tuple[str, int]:
 
 @pytest.fixture
 async def db_session_factory(postgres_url: str):
+    """Create the async SQLAlchemy session factory for the test database.
+
+    The fixture creates the schema before the test and drops it after the
+    test so each run starts from a clean database state.
+    """
     engine = create_async_engine(postgres_url, future=True)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
@@ -126,6 +161,12 @@ async def test_mqtt_publish_is_ingested_and_saved_to_db(
     db_session_factory,
     mqtt_broker_endpoint: tuple[str, int],
 ) -> None:
+    """Verify a real MQTT publish is consumed and persisted end to end.
+
+    The test publishes a telemetry payload to the broker, waits for the
+    background consumer to process it, and then checks the database for the
+    persisted reading with the exact expected values.
+    """
     aiomqtt = pytest.importorskip("aiomqtt", reason="aiomqtt is required for MQTT E2E test")
 
     broker_host, broker_port = mqtt_broker_endpoint
