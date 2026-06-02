@@ -6,6 +6,7 @@ from config import config
 
 # Import models here so SQLModel knows which tables to create
 from features.telemetry.models import TelemetryReading
+from features.automation.models import ControlRule, GreenhouseState, WateringPolicy, WateringTimes
 
 DATABASE_URL = (
     f"postgresql+asyncpg://{config.DB_USER}:{config.DB_PASSWORD}"
@@ -27,3 +28,10 @@ async def init_db():
     async with engine.begin() as conn:
         # This command actually creates the tables in the Docker container
         await conn.run_sync(SQLModel.metadata.create_all)
+
+
+async def get_session():
+    """FastAPI dependency that yields a transactional AsyncSession."""
+    async with async_session_maker() as session:
+        async with session.begin():
+            yield session

@@ -1,9 +1,12 @@
 import asyncio
 import sys
+from contextlib import asynccontextmanager
+
+import uvicorn
+from fastapi import FastAPI
 from loguru import logger
 
 from config import config
-
 from base.infrastructure.database import init_db, async_session_maker
 from base.infrastructure.message_bus import MessageBus
 from base.infrastructure.mqtt_driver import MqttDriver
@@ -12,68 +15,92 @@ from features.telemetry.handlers import TelemetryEventHandler
 from features.telemetry.events import TelemetryRecorded
 from features.telemetry.entrypoints import register_telemetry_entrypoint
 
-async def start_app():
-    """
-    Start the Smart Greenhouse backend application.
-    """
+from features.actuation.handlers import RuleTriggeredHandler
+from features.actuation.service import ActuationService
+from features.actuation.listeners import register_actuation_ack_listener
+from features.actuation.router import router as actuation_router
+
+from features.automation.events import RuleTriggered
+from features.automation.handlers import RipenessHandler, TelemetryAutomationHandler
+from features.automation.router import router as automation_router
+from features.vision.events import FruitRipenessDetected
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Wire up all infrastructure on startup; tear it down on shutdown."""
     logger.info("Starting the greenhouse backend...")
 
-    # 1. Initialize Database
+    # 1. Database
     try:
         await init_db()
-        logger.success("Database initialized and synced!")
+        logger.success("Database initialized.")
     except Exception as e:
-        logger.error(f"DB Init Failed: {e}")
-        # Continue with other services if DB fails (e.g. MQTT still needs to run)
-        # return
+        logger.error(f"DB init failed: {e}")
 
-    # 2. Initialize Message Bus
+    # 2. Message Bus
     message_bus = MessageBus()
-    logger.info("Message Bus initialized.")
 
-    # 3. Setup Telemetry Feature with per-message session boundaries.
+    # 3. Telemetry — per-message session boundaries
     telemetry_handler = TelemetryEventHandler(session_factory=async_session_maker)
     message_bus.subscribe(TelemetryRecorded, telemetry_handler)
     logger.info("Telemetry feature wired up.")
 
-    # 4. Setup MQTT Infrastructure
-    mqtt_broker = config.MQTT_BROKER_IP
-    mqtt_port = config.MQTT_PORT
-    mqtt_client_id = "backend_service"
-    
+    # 4. MQTT driver
     mqtt_driver = MqttDriver(
-        broker_url=mqtt_broker, 
-        broker_port=mqtt_port,
-        client_id=mqtt_client_id
+        broker_url=config.MQTT_BROKER_IP,
+        broker_port=config.MQTT_PORT,
+        client_id="backend_service",
     )
 
-    # 6. Register Entrypoints (Callback -> Adapter)
+    # 5. Actuation — attach service to app.state so the router can resolve it
+    actuation_service = ActuationService(mqtt_driver)
+    register_actuation_ack_listener(mqtt_driver, actuation_service)
+    app.state.actuation_service = actuation_service
 
+    rule_triggered_handler = RuleTriggeredHandler(actuation_service)
+    message_bus.subscribe(RuleTriggered, rule_triggered_handler)
+    logger.info("Actuation feature wired up.")
+
+    # 5b. Automation — policy-aware rule engine + ripeness-driven phase switching
+    ripeness_handler = RipenessHandler(async_session_maker, message_bus)
+    message_bus.subscribe(FruitRipenessDetected, ripeness_handler)
+
+    telemetry_automation_handler = TelemetryAutomationHandler(async_session_maker, message_bus)
+    message_bus.subscribe(TelemetryRecorded, telemetry_automation_handler)
+    logger.info("Automation feature wired up.")
+
+    # 6. Register all MQTT topic callbacks before connecting
     register_telemetry_entrypoint(mqtt_driver, message_bus)
 
-    # 6. Start the Application Loop
-    try:
-        await mqtt_driver.connect()
-        logger.success(f"Connected to MQTT Broker at {mqtt_broker}:{mqtt_port}")
-        
-        # This will block and listen for messages
-        await mqtt_driver.run()
-    except KeyboardInterrupt:
-        logger.info("Stopping backend...")
-    except Exception as e:
-        logger.error(f"MQTT runtime failed: {e}")
-    finally:
-        await mqtt_driver.disconnect()
-        logger.success("Backend shutdown complete.")
+    from features.vision.entrypoints import register_vision_entrypoint
+    register_vision_entrypoint(mqtt_driver, message_bus)
 
-       
+    # 7. Connect to broker and start the MQTT listener as a background task
+    await mqtt_driver.connect()
+    logger.success(f"MQTT connected at {config.MQTT_BROKER_IP}:{config.MQTT_PORT}")
+    mqtt_task = asyncio.create_task(mqtt_driver.run())
+
+    yield  # HTTP server is live here
+
+    # Shutdown
+    mqtt_task.cancel()
+    try:
+        await mqtt_task
+    except asyncio.CancelledError:
+        pass
+    await mqtt_driver.disconnect()
+    logger.info("Backend shutdown complete.")
+
+
+app = FastAPI(title="Smart Greenhouse API", version="0.1.0", lifespan=lifespan)
+
+app.include_router(actuation_router)
+app.include_router(automation_router)
 
 
 if __name__ == "__main__":
     if sys.platform.startswith("win"):
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-    try:
-        asyncio.run(start_app())
-    except KeyboardInterrupt:
-        pass
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

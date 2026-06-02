@@ -8,6 +8,7 @@ environmental sensor readings from greenhouse devices.
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
+
 from sqlalchemy import Column, DateTime
 from sqlmodel import SQLModel, Field
 
@@ -34,12 +35,11 @@ class TelemetryReading(SQLModel, table=True):
     # Unique identifier - automatically generated UUID, serves as primary key
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
 
-    # Environmental metrics
     temperature: float
     humidity: float
+    soil_moisture: Optional[float] = Field(default=None)
+    water_level: Optional[int] = Field(default=None)
 
-    # Metadata fields
-    # Persist as TIMESTAMPTZ because device payloads include UTC offset.
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), nullable=False),

@@ -17,10 +17,12 @@ from base.domain.command import Command
 
 
 class ActuationAction(str, Enum):
-	"""Supported greenhouse actuation actions."""
+	"""Supported greenhouse actuation actions — values match firmware command strings."""
 
-	TURN_ON_WATER_PUMP = "TURN_ON_WATER_PUMP"
-	TURN_OFF_WATER_PUMP = "TURN_OFF_WATER_PUMP"
+	PUMP_ON  = "PUMP_ON"
+	PUMP_OFF = "PUMP_OFF"
+	FAN_ON   = "FAN_ON"
+	FAN_OFF  = "FAN_OFF"
 
 
 @dataclass(frozen=True)
@@ -35,7 +37,7 @@ class ActuationCommand(Command[None]):
 	"""
 
 	device_id: str = ""
-	action: ActuationAction = ActuationAction.TURN_ON_WATER_PUMP
+	action: ActuationAction = ActuationAction.PUMP_ON
 	parameters: dict[str, Any] | None = None
 	timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
