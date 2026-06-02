@@ -1,85 +1,117 @@
-# Actuation Feature
+# Actuation Slice
 
 ## Purpose
 
-The actuation feature provides the command-and-control path for greenhouse devices. It lets the backend publish commands to a device through MQTT, wait for an acknowledgment, and surface that result through a FastAPI endpoint.
+The actuation slice is the command-and-control path for greenhouse devices. It publishes MQTT commands to a target ESP32, waits for a device-level acknowledgment, and surfaces that result through a FastAPI endpoint. It is also triggered automatically by the Automation slice when a `RuleTriggered` event fires.
 
-## Files in the slice
+## Files
 
-### `src/features/actuation/models.py`
-Defines the domain model for actuation:
+| File | Role |
+|---|---|
+| `src/features/actuation/models.py` | `ActuationAction` enum + `ActuationCommand` domain command |
+| `src/features/actuation/service.py` | `ActuationService` — builds MQTT payload, publishes, waits for ACK |
+| `src/features/actuation/handlers.py` | `RuleTriggeredHandler` — subscribes to `RuleTriggered`, calls service |
+| `src/features/actuation/listeners.py` | `register_actuation_ack_listener` — resolves pending futures on device ACK |
+| `src/features/actuation/router.py` | `POST /api/v1/actuation/{device_id}/command` — manual override endpoint |
 
-- `ActuationAction`: supported device actions.
-- `ActuationCommand`: immutable domain command that inherits from `base.domain.command.Command`.
+## Supported Actions
 
-`ActuationCommand` validates that:
+`ActuationAction` values match the firmware command strings exactly:
 
-- `device_id` is not empty
-- `action` is a valid `ActuationAction`
-- `parameters` is either `None` or a dictionary
+| Value | Effect on ESP32 |
+|---|---|
+| `PUMP_ON` | Turns water pump relay ON |
+| `PUMP_OFF` | Turns water pump relay OFF |
+| `FAN_ON` | Turns ventilation fan relay ON |
+| `FAN_OFF` | Turns ventilation fan relay OFF |
 
-### `src/features/actuation/service.py`
-Contains `ActuationService`, which is responsible for:
+## Architecture Diagram
 
-- transforming the domain command into the MQTT payload
-- publishing the payload through `MqttDriver`
-- waiting for the device acknowledgment
-- resolving ACKs by command ID
+```mermaid
+flowchart LR
+    RT[RuleTriggered event]
+    HTTP[HTTP POST /command]
+    Handler[RuleTriggeredHandler]
+    Router[FastAPI Router]
+    Service[ActuationService]
+    Driver[MqttDriver]
+    Broker[(MQTT Broker)]
+    ESP32[ESP32 Firmware]
+    ACK[ACK Listener]
 
-### `src/features/actuation/router.py`
-Defines the HTTP transport adapter for the feature.
+    RT --> Handler
+    HTTP --> Router
+    Handler --> Service
+    Router --> Service
+    Service -->|publish_with_device_ack| Driver
+    Driver -->|commands/greenhouse/device_id| Broker
+    Broker --> ESP32
+    ESP32 -->|commands/greenhouse/device_id/ack| Broker
+    Broker --> ACK
+    ACK -->|resolve_ack| Driver
+    Driver -->|True/False| Service
+```
 
-Endpoint:
+## Runtime Flow
 
-- `POST /api/v1/actuation/{device_id}/command`
+### Automatic path (Automation → Actuation)
 
-The endpoint:
+1. `TelemetryAutomationHandler` evaluates a `ControlRule` threshold and publishes `RuleTriggered`.
+2. `RuleTriggeredHandler.__call__(event)`:
+   - validates `event.action` is a known `ActuationAction` (drops unknown actions with a log)
+   - builds an `ActuationCommand` with optional `pulse_duration_ms` parameters
+   - calls `ActuationService.publish_with_device_ack(command)`
+3. Service builds MQTT payload, registers a pending `asyncio.Future` keyed by `command_id`.
+4. MqttDriver publishes to `commands/greenhouse/{device_id}`.
+5. ESP32 executes command and replies on `commands/greenhouse/{device_id}/ack`.
+6. `ActuationAckListener` decodes ACK, calls `service.resolve_ack(command_id)`.
+7. Future resolves → handler logs result.
 
-- accepts `action` and optional `parameters`
-- builds an `ActuationCommand`
-- calls the actuation service
-- returns `200 OK` when the device ACK is received
-- returns `504 Gateway Timeout` when the ACK is not received in time
+### Manual path (HTTP → Actuation)
 
-### `src/features/actuation/listeners.py`
-Contains the MQTT listener logic that closes the feedback loop.
+Same from step 3 onward. The router builds the `ActuationCommand` from the request body.
 
-- `handle_ack_message(...)` extracts `command_id` and resolves the pending future.
-- `register_actuation_ack_listener(...)` subscribes to `commands/greenhouse/+/ack` and routes ACK messages to the resolver.
+## MQTT Payloads
 
-### `src/features/actuation/__init__.py`
-Exposes the public API of the feature slice:
-
-- `ActuationAction`
-- `ActuationCommand`
-- `ActuationService`
-- `handle_ack_message`
-- `register_actuation_ack_listener`
-- `router`
-
-## Runtime flow
-
-1. A client sends a request to the HTTP endpoint.
-2. The router converts the request into a domain `ActuationCommand`.
-3. `ActuationService` publishes the command to:
-   - `commands/greenhouse/{device_id}`
-4. `MqttDriver` stores a pending future keyed by `command_id`.
-5. The device processes the command and sends an ACK on:
-   - `commands/greenhouse/{device_id}/ack`
-6. The listener decodes the JSON ACK payload.
-7. The listener extracts `command_id` and resolves the matching future.
-8. The HTTP route returns success if the ACK arrives before timeout.
-
-## Example ACK payload
-
+**Command (Backend → ESP32):**
 ```json
 {
-  "command_id": "8c3b77f4-4adf-4a77-8c4a-9c1b21b0f4f2"
+  "command_id": "8c3b77f4-4adf-4a77-8c4a-9c1b21b0f4f2",
+  "device_id": "esp32-gh-01",
+  "action": "PUMP_ON",
+  "timestamp": "2026-06-02T10:00:00+00:00",
+  "parameters": { "pulse_duration_ms": 3000 }
 }
 ```
 
-## Notes
+**ACK (ESP32 → Backend):**
+```json
+{ "command_id": "8c3b77f4-4adf-4a77-8c4a-9c1b21b0f4f2" }
+```
 
-- The feature intentionally reuses the shared domain `Command` base class so actuation commands follow the same command semantics as the rest of the system.
-- The MQTT driver keeps the actual request-reply waiting logic; the feature service stays thin and focused on the actuation use case.
+## HTTP Endpoint
 
+```
+POST /api/v1/actuation/{device_id}/command
+Body: { "action": "PUMP_ON", "parameters": null }
+
+200 OK  → device ACK received within 5 s
+504     → ACK timeout
+```
+
+## Error Handling
+
+- Unknown `action` in `RuleTriggered` → logged and dropped; no command sent.
+- ACK timeout (5 s) → `publish_with_device_ack` returns `False`; logged.
+- JSON decode error on ACK message → logged; pending future left to time out.
+
+## Wiring (main.py)
+
+```python
+actuation_service = ActuationService(mqtt_driver)
+register_actuation_ack_listener(mqtt_driver, actuation_service)
+app.state.actuation_service = actuation_service
+
+rule_triggered_handler = RuleTriggeredHandler(actuation_service)
+message_bus.subscribe(RuleTriggered, rule_triggered_handler)
+```

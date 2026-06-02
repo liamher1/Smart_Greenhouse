@@ -1,273 +1,189 @@
 # System Architecture
 
-## Clean Architecture Layers
+## Overview
 
-```mermaid
-graph LR
-    subgraph "External (MQTT Protocol)"
-        Device[ESP32 Sensor]
-        Broker[(MQTT Broker)]
-    end
-    
-    subgraph "Infrastructure Layer"
-        Adapter["MqttDriver<br/>(Connection & Routing)"]
-        Schema["IncomingMqttDto<br/>(Schema Validator)"]
-        DB[(PostgreSQL)]
-    end
-    
-    subgraph "Interface Adapters (Entrypoints)"
-        TelEntry["TelemetryEntrypoint<br/>(Translator)"]
-    end
-    
-    subgraph "Application Core (Domain)"
-        Bus["MessageBus<br/>(Event Dispatcher)"]
-        Event["TelemetryRecorded<br/>(Domain Object)"]
-    end
-    
-    subgraph "Business Logic (Handlers)"
-        TelHandler["TelemetryHandler<br/>(Save to DB)"]
-        IrrHandler["IrrigationHandler<br/>(AI Decisions)"]
-    end
-    
-    Device -.->|JSON via TCP| Broker
-    Broker -->|TCP| Adapter
-    Adapter -->|topic, bytes| TelEntry
-    TelEntry -->|Parse & Validate| Schema
-    TelEntry -->|Create Event| Event
-    TelEntry -->|Dispatch| Bus
-    Bus -->|Route Event| TelHandler
-    TelHandler -->|Persist| DB
-    IrrHandler -->|Create Command| Bus
-    Bus -->|Publish| Adapter
-    Adapter -->|MQTT| Broker
-    Broker -.->|Subscribe| Device
+Smart Strawberry Greenhouse — end-to-end data flow across all components.
+
 ```
-
-## High-Level Telemetry Data Flow
-
-This diagram illustrates how data flows from the edge devices (ESP32) through the Clean Architecture layers of the backend.
-
-```mermaid
-graph TD
-    subgraph "External World"
-        Device[ESP32 Sensor]
-        Broker[(MQTT Broker)]
-    end
-
-    subgraph "Infrastructure Layer"
-        Adapter[MqttDriver]
-        DB[(PostgreSQL)]
-    end
-
-    subgraph "Interface Layer (Entrypoints)"
-        TelEntry[Telemetry Entrypoint @ MQTT Handler]
-    end
-
-    subgraph "Application Core"
-        Bus[Message Bus]
-        TelHandler[Telemetry Handler]
-        IrrigationHandler[Irrigation Logic]
-    end
-
-    %% Telemetry Flow
-    Device -->|1. Publish<br/>greenhouse/telemetry/sensor-01| Broker
-    Broker -->|2. TCP Stream| Adapter
-    Adapter -->|3. Invoke Callback<br/>topic, bytes| TelEntry
-    TelEntry -->|4. Decode JSON &<br/>Validate| Bus
-    TelEntry -->|5. Create Event| TelHandler
-    TelHandler -->|6. Save| DB
-
-    %% Command Control Flow
-    IrrigationHandler -->|7. Create Command| Bus
-    Bus -->|8. Route| Adapter
-    Adapter -->|9. Publish Command| Broker
-    Broker -->|10. Subscribe| Device
-```
-
----
-
-## Detailed Telemetry Message Processing Flow
-
-```mermaid
-sequenceDiagram
-    participant Device as ESP32 Device
-    participant Broker as MQTT Broker
-    participant Adapter as MqttDriver
-    participant Entrypoint as TelemetryEntrypoint
-    participant Schema as IncomingMqttDto
-    participant Bus as MessageBus
-    participant Handler as TelemetryHandler
-    participant DB as PostgreSQL
-
-    Device->>Broker: 1. Publish JSON<br/>{header: {...}, payload: {...}}
-    Broker->>Adapter: 2. Deliver to greenhouse/telemetry/+
-    Adapter->>Adapter: 3. Match topic pattern
-    Adapter->>Entrypoint: 4. Invoke on_telemetry_message(topic, bytes)
-    
-    activate Entrypoint
-    Entrypoint->>Entrypoint: 5a. Decode bytes → UTF-8 string
-    Entrypoint->>Entrypoint: 5b. Parse JSON
-    Entrypoint->>Schema: 5c. Validate with IncomingMqttDto
-    
-    alt Validation Success
-        Schema-->>Entrypoint: Valid envelope ✓
-        Entrypoint->>Entrypoint: 6. Extract device_id, temperature, humidity
-        Entrypoint->>Entrypoint: 7. Create TelemetryRecorded
-        Entrypoint->>Bus: 8. await bus.handle(event)
-        deactivate Entrypoint
-        
-        Bus->>Handler: 9. Route event to matching handler
-        activate Handler
-        Handler->>DB: 10. Insert/Update telemetry record
-        DB-->>Handler: ✓ Persisted
-        deactivate Handler
-    else Validation Failure
-        Schema-->>Entrypoint: ValidationError ✗
-        Entrypoint->>Entrypoint: Log error (data not entered system)
-        deactivate Entrypoint
-    end
-```
-
-## Command with Acknowledgment Flow
-
-This sequence shows the specific flow for the `publish_with_device_ack` feature, where the backend waits for the device to confirm receipt.
-
-```mermaid
-sequenceDiagram
-    participant Logic as Business Logic (Handler)
-    participant Adapter as MQTT Adapter
-    participant Broker as MQTT Broker
-    participant Device as ESP32
-
-    Logic->>Adapter: publish_with_device_ack(topic, payload)
-    activate Adapter
-    Adapter->>Adapter: Generate command_id (UUID)
-    Adapter->>Adapter: Create Future & Store in _pending_responses
-    Adapter->>Broker: Publish { "command_id": "123", ... }
-    
-    par Async Wait
-        Adapter->>Adapter: await asyncio.wait_for(future)
-    and Device Action
-        Broker->>Device: Deliver Message
-        Device->>Device: Process Command
-        Device-->>Broker: Publish ACK to "responses/ack"
-        Note right of Device: Payload: { "command_id": "123", "status": "OK" }
-    end
-    
-    Broker->>Adapter: Deliver ACK Message
-    Adapter->>Adapter: resolve_ack("123")
-    Adapter->>Adapter: Future.set_result(True)
-    deactivate Adapter
-    Adapter-->>Logic: Returns True
+┌──────────────────────────── PHYSICAL LAYER ────────────────────────────────┐
+│                                                                             │
+│   Soil Moisture (ADC) ──┐                                                   │
+│   DHT22 (Temp/Hum)  ────┼──► ESP32-S2 (MicroPython Firmware)               │
+│   Float Switch      ────┘         │  every 30 min  │  every 100 ms          │
+│                                   │  publish       │  check_msg()           │
+│                                   │  telemetry     │  + safety interlock    │
+│                                   │                │                        │
+│                     Water Pump ◄──┼── relay cmd    │                        │
+│                     Fan        ◄──┘                │                        │
+└───────────────────────────────────┼────────────────────────────────────────┘
+                                    │ MQTT: greenhouse/telemetry/esp32-gh-01
+┌───────────────────────────────────┼────────────────────────────────────────┐
+│              RASPBERRY PI (Mosquitto Broker + Vision Agent)                 │
+│                                   │                                         │
+│   Mosquitto ◄─────────────────────┘    also publishes every 4 hours:       │
+│       │                                greenhouse/vision/rpi-gh-01          │
+│       │                                        ▲                            │
+│       │    Pi Camera Module 3                  │                            │
+│       │    ──────────────────                  │                            │
+│       │    autofocus → capture ──► YOLOv8 (Strawberry Detect)              │
+│       │                            Flower / Green Strawberry → green_pct   │
+│       │                            Red Strawberry            → red_pct     │
+│       │                            dominant stage → PlantStage             │
+└───────┼────────────────────────────────────────────────────────────────────┘
+        │ MQTT subscriptions
+┌───────┼────────────────────────────────────────────────────────────────────┐
+│       │               FASTAPI BACKEND                                       │
+│       ▼                                                                     │
+│   MqttDriver (aiomqtt)                                                      │
+│       │                                                                     │
+│   ┌───┴──────────────────┬──────────────────────┬────────────────────┐     │
+│   │ greenhouse/           │ greenhouse/           │ commands/          │     │
+│   │ telemetry/+           │ vision/+              │ greenhouse/+/ack   │     │
+│   ▼                       ▼                       ▼                   │     │
+│ TelemetryEntrypoint   VisionEntrypoint     ActuationAckListener       │     │
+│   │                       │                       │                   │     │
+│   ▼                       ▼                       ▼                   │     │
+│ TelemetryRecorded   FruitRipenessDetected  resolve_ack(command_id)    │     │
+│ {temp, hum,         {stage, green_pct,                                │     │
+│  soil_moisture,      white_pink_pct,                                  │     │
+│  water_level}        red_pct, confidence}                             │     │
+│   │                       │                                           │     │
+│   └───────────┬───────────┘                                           │     │
+│               ▼                                                       │     │
+│          MessageBus (fan-out)                                         │     │
+│               │                                                       │     │
+│   ┌───────────┼───────────────────┬───────────────────────┐          │     │
+│   ▼           ▼                   ▼                       ▼          │     │
+│ Telemetry  Telemetry-         Ripeness-              RuleTriggered-  │     │
+│ EventHndlr AutomationHndlr    Handler                Handler         │     │
+│   │           │                   │                       │          │     │
+│   ▼           │                   ▼                       ▼          │     │
+│ persist    1. get stage        upsert              ActuationService   │     │
+│ to DB      2. query rules      GreenhouseState     publish_with_ack() │     │
+│            3. evaluate         in DB               │                  │     │
+│            4. if triggered ──► RuleTriggered       │                  │     │
+│                                event               │                  │     │
+│                                                    ▼                  │     │
+│                                         MQTT publish                  │     │
+│                                   commands/greenhouse/esp32-gh-01     │     │
+│                                   {command_id, action: "PUMP_ON",    │     │
+│                                    parameters: {pulse_ms: 3000}}     │     │
+│                                                    │                  │     │
+│                                    waits for ACK ◄─┘ (5 s timeout)   │     │
+│                                                                       │     │
+│   ┌──────────────────── PostgreSQL ────────────────────────────────┐ │     │
+│   │  telemetryreading   │  greenhousestate  │  controlrule         │ │     │
+│   │  wateringpolicy     │  wateringtimes                           │ │     │
+│   └─────────────────────────────────────────────────────────────── ┘ │     │
+│                                                                       │     │
+│   REST API (FastAPI)                                                  │     │
+│   POST /api/v1/actuation/{device_id}/command   (manual override)     │     │
+│   GET|POST|PATCH|DELETE /api/v1/automation/rules                     │     │
+│   GET|POST /api/v1/automation/policies                               │     │
+│   GET /api/v1/automation/state                                       │     │
+└───────────────────────────────────────────────────────────────────────┘
+        │ commands/greenhouse/esp32-gh-01
+┌───────▼────────────────────────────────────────────────────────────────┐
+│                  ESP32-S2 RECEIVES COMMAND                              │
+│                                                                         │
+│   _on_command()                                                         │
+│       │                                                                 │
+│   Safety interlock: float_switch.is_empty()?                           │
+│       YES → block PUMP_ON, log warning                                  │
+│       NO  → pump.on()  /  fan.on()  /  pump.off()  /  fan.off()       │
+│                                                                         │
+│   ACK → commands/greenhouse/esp32-gh-01/ack  {command_id: "..."}       │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Data Validation Boundary
-
-The **Entrypoint Layer** is the critical boundary where untrusted external data is validated before entering the system:
+## Brix Feedback Loop (Autonomous Ripening)
 
 ```
-UNTRUSTED DATA ZONE          │  TRUSTED DOMAIN ZONE
-(Raw MQTT bytes)             │  (Domain Events only)
-                             │
-Adapter receives bytes ──→   │
-                      ↓      │
-                   Entrypoint processes:
-                      • JSON decode ──→ Catch JSONDecodeError
-                      • Schema validation ──→ Catch ValidationError
-                      • Type checking
-                      • Required fields check
-                             ↓      │
-                   Event created    │
-                             ↓      │
-Message Bus (only events) ←──────────
+Pi Camera detects Red Strawberry > 60 %
+          │
+          ▼
+  FruitRipenessDetected { stage: "Red", red_pct: 74, ... }
+          │
+          ▼
+  RipenessHandler → GreenhouseState.plant_stage = "Red"  (DB)
+          │
+          ▼  (next telemetry, 30 min later)
+  TelemetryAutomationHandler
+    queries ControlRule WHERE plant_stage = 'Red' OR NULL
+    evaluates: soil_moisture (16.0) < threshold (20.0) → True
+          │
+          ▼
+  RuleTriggered { action: "PUMP_ON", pulse_duration_ms: 3000 }
+          │
+          ▼
+  PUMP_ON sent to ESP32 (short pulse = water stress maintained)
+          │
+          ▼
+  Albion strawberry achieves 11–13° Brix at harvest
 ```
 
-**Critical Rule**: If validation fails at the Entrypoint, the error is logged and the message is **dropped**. No corrupted data reaches handlers.
+No code changes required — thresholds live in the `ControlRule` table.
 
 ---
 
-## Session and Transaction Boundary Policy
+## Slice Summary
 
-- Each inbound telemetry message is processed with a **fresh AsyncSession**.
-- The transaction is opened in the application layer with `async with session.begin()`.
-- Repository methods do not own transaction boundaries (`commit`/`rollback`); they only `add` + `flush`.
-- If persistence fails, the active transaction is rolled back and the session is closed.
-- A failed session is never reused for another message.
-
-This keeps session lifecycle explicit, prevents cross-message coupling, and makes error-handling behavior easy to test.
-
----
-
-## Component Roles
-
-### 1. MQTT Adapter (`infrastructure/mqtt_driver.py`)
-- **Role**: The physical gateway.
-- **Responsibility**: 
-  - Maintains TCP connection to broker.
-  - Routes raw MQTT messages to registered callbacks using topic pattern matching.
-  - Manages the ACK wait loop (`publish_with_device_ack`).
-- **Dependencies**: `aiomqtt`.
-- **Key Pattern**: Callback registry with decorator-based registration.
-
-### 2. Entrypoints (`features/*/entrypoints.py`)
-- **Role**: The translation & validation layer.
-- **Responsibility**: 
-  - Converts `(topic, bytes)` → `DomainEvent`.
-  - **Validates all data against schemas** (Pydantic IncomingMqttDto).
-  - Extracts business-relevant fields.
-  - Stops bad data from entering the core.
-- **Example** (`TelemetryEntrypoint`):
-  1. Decode bytes → JSON
-  2. Validate against `IncomingMqttDto`
-  3. Extract `temperature`, `humidity`, `device_id`
-  4. Create `TelemetryRecorded`
-  5. Dispatch to MessageBus
-
-### 3. Message Bus (`infrastructure/message_bus.py`)
-- **Role**: The central nervous system.
-- **Responsibility**: 
-  - Decouples the "trigger" (Entrypoint) from the "action" (Handler).
-  - Routes `DomainEvent` to all registered handlers.
-  - Allows one event to trigger multiple handlers (publish-subscribe).
-
-### 4. Handlers (`features/*/handlers.py`)
-- **Role**: The brain.
-- **Responsibility**: 
-  - Pure business logic.
-  - Database persistence.
-  - Decision-making ("If humidity < 30%, start irrigation").
-  - Calling `publish_with_device_ack` to send commands back.
-- **Assumption**: Only receives valid domain events (validation already done at Entrypoint).
+| Slice | Location | Responsibility |
+|---|---|---|
+| Firmware | `Firmware/` | Sensors → MQTT telemetry; receive + execute commands; safety interlock |
+| Telemetry | `Backend/src/features/telemetry/` | Ingest MQTT telemetry → persist to DB |
+| Actuation | `Backend/src/features/actuation/` | Publish MQTT commands → wait for device ACK |
+| Automation | `Backend/src/features/automation/` | Rules engine: evaluate telemetry against DB thresholds; fire RuleTriggered |
+| Vision | `Backend/src/features/vision/` | Ingest Pi inference results → FruitRipenessDetected event |
+| RaspberryPi | `RaspberryPi/` | Capture image → YOLOv8 inference → publish vision MQTT message |
 
 ---
 
-## Message Format: IncomingMqttDto
+## MQTT Topic Map
 
-All MQTT messages must follow this structure (defined in `infrastructure/schemas.py`):
+| Topic | Direction | Published by | Consumed by |
+|---|---|---|---|
+| `greenhouse/telemetry/<device_id>` | ESP32 → Broker → Backend | ESP32 firmware | TelemetryEntrypoint |
+| `greenhouse/vision/<device_id>` | Pi → Broker → Backend | Pi vision agent | VisionEntrypoint |
+| `commands/greenhouse/<device_id>` | Backend → Broker → ESP32 | ActuationService | ESP32 firmware |
+| `commands/greenhouse/<device_id>/ack` | ESP32 → Broker → Backend | ESP32 firmware | ActuationAckListener |
+
+---
+
+## Startup Wiring (main.py)
+
+```
+init_db()                         → creates all tables
+MessageBus()                      → instantiated
+TelemetryEventHandler             → subscribed to TelemetryRecorded
+TelemetryAutomationHandler        → subscribed to TelemetryRecorded
+RipenessHandler                   → subscribed to FruitRipenessDetected
+RuleTriggeredHandler              → subscribed to RuleTriggered
+MqttDriver.connect()              → connects to broker
+register_telemetry_entrypoint()   → routes greenhouse/telemetry/+
+register_vision_entrypoint()      → routes greenhouse/vision/+
+register_actuation_ack_listener() → routes commands/greenhouse/+/ack
+mqtt_driver.run()                 → async listener loop (background task)
+FastAPI serves HTTP               → actuation + automation REST endpoints
+```
+
+---
+
+## Message Envelope (all MQTT messages)
+
+All MQTT messages share the same `IncomingMqttDto` wrapper:
 
 ```json
 {
   "header": {
-    "type": "telemetry",           // or "command", "ack", etc.
-    "device_id": "sensor-01",
-    "timestamp": "2026-03-22T10:30:00Z"
+    "type": "telemetry",
+    "device_id": "esp32-gh-01",
+    "timestamp": "2026-06-02T10:00:00+00:00"
   },
-  "payload": {
-    "temperature": 25.5,
-    "humidity": 60.0,
-    // ... any additional fields
-  }
+  "payload": { ... }
 }
 ```
 
-**Validation Occurs Here**:
-- Header is mandatory and must match Pydantic schema.
-- Payload is flexible (dict), but handlers may perform additional field checks.
-- Timestamp format must be ISO 8601.
-- Device ID must be a non-empty string.
-
-
-
-
+`type` values: `"telemetry"` | `"vision"`

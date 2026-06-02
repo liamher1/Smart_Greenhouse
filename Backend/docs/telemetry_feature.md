@@ -56,8 +56,10 @@ Incoming payload is validated as infrastructure DTO first:
   - `device_id`
   - `timestamp`
 - Payload fields expected by telemetry event:
-  - `temperature`
-  - `humidity`
+  - `temperature` (required)
+  - `humidity` (required)
+  - `soil_moisture` (optional — 0.0–100.0 %)
+  - `water_level` (optional — 0 = full, 1 = empty)
 
 Example valid message:
 
@@ -65,12 +67,14 @@ Example valid message:
 {
   "header": {
     "type": "telemetry",
-    "device_id": "esp32-greenhouse-a",
-    "timestamp": "2026-04-04T12:34:56+00:00"
+    "device_id": "esp32-gh-01",
+    "timestamp": "2026-06-02T10:00:00+00:00"
   },
   "payload": {
-    "temperature": 25.5,
-    "humidity": 60.0
+    "temperature": 22.5,
+    "humidity": 65.0,
+    "soil_moisture": 24.3,
+    "water_level": 0
   }
 }
 ```
@@ -141,6 +145,8 @@ sequenceDiagram
 - `humidity` range: `0.0` to `100.0`
 - `device_id`: non-empty string
 - `timestamp`: required datetime (device-reported timestamp)
+- `soil_moisture`: optional float, `0.0`–`100.0` % (used by Automation rules engine)
+- `water_level`: optional int, `0` (full) or `1` (empty)
 
 Model config:
 
