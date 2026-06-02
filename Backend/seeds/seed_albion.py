@@ -108,6 +108,16 @@ RULES: list[dict] = [
         "device_id":        "esp32-gh-01",
         "pulse_duration_ms": 0,
     },
+    {
+        "name":             "Green — fan OFF (humidity)",
+        "plant_stage":      PlantStage.GREEN,
+        "sensor_metric":    "humidity",
+        "operator":         "lt",
+        "threshold":        65.0,   # hysteresis: 65–75 % safe band
+        "action":           "FAN_OFF",
+        "device_id":        "esp32-gh-01",
+        "pulse_duration_ms": 0,
+    },
 
     # ── WHITE/PINK STAGE (Flowering) ───────────────────────────────────────
     {
@@ -160,6 +170,16 @@ RULES: list[dict] = [
         "device_id":        "esp32-gh-01",
         "pulse_duration_ms": 0,
     },
+    {
+        "name":             "WhitePink — fan OFF (humidity)",
+        "plant_stage":      PlantStage.WHITE_PINK,
+        "sensor_metric":    "humidity",
+        "operator":         "lt",
+        "threshold":        50.0,   # hysteresis: 50–60 % safe band for flowering
+        "action":           "FAN_OFF",
+        "device_id":        "esp32-gh-01",
+        "pulse_duration_ms": 0,
+    },
 
     # ── RED STAGE (Ripening) ───────────────────────────────────────────────
     {
@@ -209,6 +229,16 @@ RULES: list[dict] = [
         "operator":         "gt",
         "threshold":        70.0,   # high RH on ripe fruit → botrytis risk
         "action":           "FAN_ON",
+        "device_id":        "esp32-gh-01",
+        "pulse_duration_ms": 0,
+    },
+    {
+        "name":             "Red — fan OFF (humidity)",
+        "plant_stage":      PlantStage.RED,
+        "sensor_metric":    "humidity",
+        "operator":         "lt",
+        "threshold":        60.0,   # hysteresis: 60–70 % safe band for ripening
+        "action":           "FAN_OFF",
         "device_id":        "esp32-gh-01",
         "pulse_duration_ms": 0,
     },

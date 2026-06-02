@@ -27,6 +27,12 @@ DHT_PIN = 4
 # ESP32-S2 ADC is only on GPIO 1-20; GPIO 34 (original ESP32) is NOT valid here.
 SOIL_MOISTURE_PIN = 10
 
+# Capacitive soil moisture sensor calibration (raw ADC 0–4095).
+# Measure your sensor in dry air and in water to find your values.
+# Default: typical values for a generic capacitive sensor.
+SOIL_ADC_DRY = 3200   # ADC reading in completely dry soil / air
+SOIL_ADC_WET = 1100   # ADC reading in saturated / submerged soil
+
 # Water pump relay (5V module, VUSB-powered)
 # NOTE: GPIO 26-32 are reserved for the embedded SPI flash on all ESP32-S2 modules
 # (MINI-1, WROOM, etc.) and are not available as user GPIO on any standard board.
