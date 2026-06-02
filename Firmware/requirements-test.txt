@@ -1,0 +1,6 @@
+pytest>=8
+pytest-asyncio>=0.23
+aiomqtt>=2
+testcontainers>=4
+docker>=7
+littlefs-python>=0.17

@@ -1,0 +1,5 @@
+[wokwi]
+version = 1
+# Combined flash image: MicroPython at 0x1000 + LittleFS filesystem at 0x200000.
+# Rebuild with: python build_flash_image.py  (run from Firmware/ after any .py change)
+firmware = "esp32s2-combined.bin"

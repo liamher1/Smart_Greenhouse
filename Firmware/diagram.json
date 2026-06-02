@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "author": "liam & greenhouse team",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-s2-devkitm-1", "id": "esp",        "top": 0,     "left": -14.36, "attrs": {} },
+    { "type": "wokwi-dht22",              "id": "dht1",       "top": -171.9, "left": -200,   "attrs": {} },
+    { "type": "wokwi-potentiometer",      "id": "pot_soil",   "top": -171.9, "left":  105.4, "attrs": {} },
+    { "type": "wokwi-pushbutton",         "id": "btn_float",  "top": -171.9, "left":  260,   "attrs": { "label": "Float switch (press = water present)" } },
+    { "type": "wokwi-led",               "id": "led_pump",   "top":  211.2, "left":  -86.4, "attrs": { "color": "blue",  "label": "Pump relay" } },
+    { "type": "wokwi-resistor",           "id": "r_pump",     "top":  144,   "left":  -86.4, "attrs": { "value": "220" } },
+    { "type": "wokwi-led",               "id": "led_fan",    "top":  211.2, "left":   57.6, "attrs": { "color": "green", "label": "Fan relay"  } },
+    { "type": "wokwi-resistor",           "id": "r_fan",      "top":  144,   "left":   57.6, "attrs": { "value": "220" } }
+  ],
+  "connections": [
+    [ "esp:GND.1", "dht1:GND",           "black",  [ "v0" ] ],
+    [ "esp:3V3",   "dht1:VCC",           "red",    [ "v0" ] ],
+    [ "esp:4",     "dht1:SDA",           "blue",   [ "v0" ] ],
+
+    [ "esp:GND.2", "pot_soil:GND",       "black",  [ "v0" ] ],
+    [ "esp:3V3",   "pot_soil:VCC",       "red",    [ "v0" ] ],
+    [ "esp:10",    "pot_soil:SIG",       "green",  [ "v0" ] ],
+
+    [ "esp:7",     "btn_float:1.l",      "yellow", [ "v0" ] ],
+    [ "esp:GND.3", "btn_float:2.l",      "black",  [ "v0" ] ],
+
+    [ "esp:5",     "r_pump:1",           "gold",   [ "v0" ] ],
+    [ "r_pump:2",  "led_pump:A",         "gold",   [ "v0" ] ],
+    [ "esp:GND.1", "led_pump:C",         "black",  [ "v0" ] ],
+
+    [ "esp:6",     "r_fan:1",            "green",  [ "v0" ] ],
+    [ "r_fan:2",   "led_fan:A",          "green",  [ "v0" ] ],
+    [ "esp:GND.2", "led_fan:C",          "black",  [ "v0" ] ],
+
+    [ "esp:TX",    "$serialMonitor:RX",  "",       [] ],
+    [ "esp:RX",    "$serialMonitor:TX",  "",       [] ]
+  ],
+  "dependencies": {}
+}

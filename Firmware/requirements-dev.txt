@@ -1,4 +1,0 @@
-# PC-side tools for ESP32 MicroPython development
-# Install with: pip install -r Firmware/requirements-dev.txt
-mpremote   # upload files, open REPL, run mip installs
-esptool    # flash MicroPython firmware to the ESP32
