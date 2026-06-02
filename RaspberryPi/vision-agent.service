@@ -1,0 +1,14 @@
+[Unit]
+Description=Greenhouse Vision Agent (Strawberry Detect)
+After=network.target mosquitto.service
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/greenhouse/RaspberryPi
+ExecStart=/home/pi/greenhouse/.venv/bin/python vision_agent.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
