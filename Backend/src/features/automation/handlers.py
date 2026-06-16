@@ -35,13 +35,19 @@ def _evaluate(rule: ControlRule, event: TelemetryRecorded) -> bool:
 class RipenessHandler:
     """Updates GreenhouseState when the Vision slice reports a new ripeness reading."""
 
-    def __init__(self, session_factory: Callable[[], AsyncSession], bus: MessageBus) -> None:
+    def __init__(
+        self,
+        session_factory: Callable[[], AsyncSession],
+        bus: MessageBus,
+        repository_factory: Callable[[AsyncSession], AutomationRepository] | None = None,
+    ) -> None:
         self._session_factory = session_factory
+        self._repo_factory = repository_factory or AutomationRepository
 
     async def __call__(self, event: FruitRipenessDetected) -> None:
         async with self._session_factory() as session:
             async with session.begin():
-                repo = AutomationRepository(session)
+                repo = self._repo_factory(session)
                 await repo.upsert_greenhouse_state(event.device_id, event.stage)
 
         logger.info(
