@@ -1,9 +1,9 @@
 """
-Raspberry Pi vision agent — Strawberry Detect (Roboflow).
+Raspberry Pi vision agent — Strawberry Detect (Roboflow serverless API).
 
-Captures an image every INFERENCE_INTERVAL_SEC, runs YOLOv8 inference using
-the Roboflow Strawberry Detect model, maps detections to the three greenhouse
-plant stages, then publishes results to the MQTT broker.
+Captures an image every INFERENCE_INTERVAL_SEC, runs inference via Roboflow's
+serverless hosted API (no local model, no PyTorch dependency), maps detections
+to the three greenhouse plant stages, then publishes results to the MQTT broker.
 
 MQTT topic : greenhouse/vision/<DEVICE_ID>
 Payload    : IncomingMqttDto envelope (matches Backend vision entrypoint)
@@ -12,19 +12,20 @@ Strawberry Detect class → PlantStage mapping:
   Flower           → Green  (pre-fruit, early stage)
   Green Strawberry → Green
   Red Strawberry   → Red
-  (No White/Pink class — stage assigned "WhitePink" when neither dominates)
+  (WhitePink when neither green nor red reaches the dominance threshold)
 """
 
 from __future__ import annotations
 
 import json
 import os
+import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 import paho.mqtt.client as mqtt
-from inference import get_model
+from inference_sdk import InferenceHTTPClient
 
 import config
 
@@ -33,43 +34,45 @@ _STAGE_GREEN     = "Green"
 _STAGE_WHITEPINK = "WhitePink"
 _STAGE_RED       = "Red"
 
-# Roboflow model class names (lowercase) → stage bucket
+# Roboflow class names (lowercase) → stage bucket
 _GREEN_CLASSES = {"flower", "green strawberry"}
 _RED_CLASSES   = {"red strawberry"}
 
 
-# ── Model ─────────────────────────────────────────────────────────────────────
+# ── Roboflow client ───────────────────────────────────────────────────────────
 
-def _load_model():
-    """Download (first run) or load cached Roboflow model."""
-    print(f"[Vision] Loading model '{config.MODEL_ID}' ...")
-    model = get_model(model_id=config.MODEL_ID, api_key=config.ROBOFLOW_API_KEY)
-    print("[Vision] Model ready.")
-    return model
+def _load_model() -> InferenceHTTPClient:
+    """Create Roboflow serverless inference client."""
+    print(f"[Vision] Connecting to Roboflow serverless API (model: {config.MODEL_ID}) ...")
+    client = InferenceHTTPClient(
+        api_url="https://serverless.roboflow.com",
+        api_key=config.ROBOFLOW_API_KEY,
+    )
+    print("[Vision] Client ready.")
+    return client
 
 
 # ── Camera ────────────────────────────────────────────────────────────────────
 
 def _capture_image() -> str:
-    """Capture a still from the Pi Camera Module 3, save locally, return file path."""
-    from picamera2 import Picamera2  # imported here — not available on non-Pi systems
-    from picamera2.controls import AfModeEnum
-
+    """Capture a still via rpicam-still CLI, save locally, return file path."""
     Path(config.IMAGE_SAVE_DIR).mkdir(parents=True, exist_ok=True)
     ts   = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     path = os.path.join(config.IMAGE_SAVE_DIR, f"capture_{ts}.jpg")
 
-    cam = Picamera2()
-    cam.configure(cam.create_still_configuration())
-    cam.start()
-
-    # Camera Module 3 has autofocus — trigger a focus cycle before capture
-    # so the inference model receives a sharp, well-focused image
-    cam.set_controls({"AfMode": AfModeEnum.Auto})
-    cam.autofocus_cycle()
-
-    cam.capture_file(path)
-    cam.stop()
+    result = subprocess.run(
+        [
+            "rpicam-still",
+            "--output", path,
+            "--autofocus-mode", "auto",
+            "--timeout", "3000",
+            "--nopreview",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"rpicam-still failed: {result.stderr.strip()}")
 
     print(f"[Vision] Image saved: {path}")
     return path
@@ -77,19 +80,19 @@ def _capture_image() -> str:
 
 # ── Inference ─────────────────────────────────────────────────────────────────
 
-def _run_inference(model, image_path: str) -> dict:
+def _run_inference(client: InferenceHTTPClient, image_path: str) -> dict:
     """
-    Run the Strawberry Detect model and return a dict ready for the MQTT payload.
+    Send image to Roboflow and return stage stats.
 
-    Returns stage percentages and dominant stage:
+    Returns:
+      - stage          : dominant PlantStage string (Green / WhitePink / Red)
       - green_pct      : % of detections that are Flower or Green Strawberry
+      - white_pink_pct : residual (100 - green - red)
       - red_pct        : % of detections that are Red Strawberry
-      - white_pink_pct : residual (100 - green - red); non-zero when mixed
-      - stage          : dominant PlantStage string
       - confidence     : average detection confidence (0–1)
     """
-    results     = model.infer(image_path, confidence=config.CONFIDENCE_THRESHOLD)[0]
-    predictions = results.predictions
+    response    = client.infer(image_path, model_id=config.MODEL_ID)
+    predictions = response.get("predictions", [])
 
     if not predictions:
         print("[Vision] No strawberries detected — reporting Green stage at 0% confidence.")
@@ -106,8 +109,8 @@ def _run_inference(model, image_path: str) -> dict:
     total_conf  = 0.0
 
     for pred in predictions:
-        cls = pred.class_name.lower()
-        total_conf += pred.confidence
+        cls = pred["class"].lower()
+        total_conf += pred["confidence"]
         if cls in _GREEN_CLASSES:
             green_count += 1
         elif cls in _RED_CLASSES:
@@ -118,8 +121,6 @@ def _run_inference(model, image_path: str) -> dict:
     red_pct   = round(red_count   / total * 100, 1) if total else 0.0
     avg_conf  = round(total_conf / len(predictions), 3)
 
-    # Stage assignment — WhitePink covers the transition window where neither
-    # green nor red reaches the dominance threshold (e.g. 40 % green / 60 % red)
     if red_pct >= config.DOMINANCE_THRESHOLD_PCT:
         stage = _STAGE_RED
     elif green_pct >= config.DOMINANCE_THRESHOLD_PCT:
@@ -127,7 +128,6 @@ def _run_inference(model, image_path: str) -> dict:
     else:
         stage = _STAGE_WHITEPINK
 
-    # Residual percentage: non-zero only when both classes are detected (mixed frame)
     white_pink_pct = round(max(0.0, 100.0 - green_pct - red_pct), 1)
 
     return {
@@ -169,7 +169,7 @@ def _reconnect(client: mqtt.Client) -> None:
 
 
 def _publish(client: mqtt.Client, inference_result: dict) -> None:
-    topic = f"greenhouse/vision/{config.DEVICE_ID}"
+    topic   = f"greenhouse/vision/{config.DEVICE_ID}"
     message = {
         "header": {
             "type":      "vision",
@@ -179,28 +179,29 @@ def _publish(client: mqtt.Client, inference_result: dict) -> None:
         "payload": inference_result,
     }
     client.publish(topic, json.dumps(message), qos=1)
-    print(f"[Vision] Published → {topic} | stage={inference_result['stage']} "
-          f"green={inference_result['green_pct']}% "
-          f"red={inference_result['red_pct']}% "
-          f"conf={inference_result['confidence']}")
+    print(
+        f"[Vision] Published → {topic} | stage={inference_result['stage']} "
+        f"green={inference_result['green_pct']}% "
+        f"red={inference_result['red_pct']}% "
+        f"conf={inference_result['confidence']}"
+    )
 
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
 
 def main() -> None:
     print("[Vision] Agent starting.")
-    model  = _load_model()
-    client = _connect_mqtt()
+    client      = _load_model()
+    mqtt_client = _connect_mqtt()
 
-    # Trigger immediately on first boot, then respect the interval
     last_run = time.time() - config.INFERENCE_INTERVAL_SEC
 
     while True:
         if time.time() - last_run >= config.INFERENCE_INTERVAL_SEC:
             try:
                 image_path       = _capture_image()
-                inference_result = _run_inference(model, image_path)
-                _publish(client, inference_result)
+                inference_result = _run_inference(client, image_path)
+                _publish(mqtt_client, inference_result)
             except Exception as e:
                 print(f"[Vision] Cycle error: {e}")
             finally:

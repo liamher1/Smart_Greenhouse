@@ -13,7 +13,7 @@ INFERENCE_INTERVAL_SEC = 4 * 3600  # 4 hours
 # Model page: https://universe.roboflow.com/strawberries/strawberry-detect
 # Check the version number on the model page and update below if needed
 ROBOFLOW_API_KEY = ""
-MODEL_ID = "strawberry-detect/1"
+MODEL_ID = "strawberry-detect/6"
 
 # Minimum confidence to count a detection (0.0 – 1.0)
 CONFIDENCE_THRESHOLD = 0.40
@@ -22,4 +22,4 @@ CONFIDENCE_THRESHOLD = 0.40
 DOMINANCE_THRESHOLD_PCT = 60.0
 
 # Directory where captured images are stored locally on the Pi
-IMAGE_SAVE_DIR = "/home/pi/greenhouse/images"
+IMAGE_SAVE_DIR = "/home/liamh/greenhouse/images"
