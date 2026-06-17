@@ -2,6 +2,9 @@ import asyncio
 import sys
 from contextlib import asynccontextmanager
 
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 import uvicorn
 from fastapi import FastAPI
 from loguru import logger
@@ -100,7 +103,4 @@ app.include_router(automation_router)
 
 
 if __name__ == "__main__":
-    if sys.platform.startswith("win"):
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False, loop="none")
