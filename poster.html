@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>חממה חכמה – פוסטר</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Assistant', Arial, sans-serif;
+    background: #1a5c2e;
+    color: #fff;
+    width: 1400px;
+    min-height: 960px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #0d3d1c 0%, #1a5c2e 100%);
+    border: 2px solid #2ecc71;
+    border-radius: 12px;
+    padding: 14px 24px;
+    margin-bottom: 14px;
+  }
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 28px;
+    font-weight: 800;
+    color: #2ecc71;
+    direction: ltr;
+  }
+  .header-logo .diamond { font-size: 22px; }
+  .header-title { text-align: center; }
+  .header-title h1 {
+    font-size: 42px;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 0 20px rgba(46,204,113,0.5);
+    letter-spacing: 2px;
+  }
+  .header-title p {
+    font-size: 16px;
+    color: #a8e6bf;
+    margin-top: 4px;
+  }
+  .header-right { width: 120px; }
+
+  /* ── GRID LAYOUT ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 340px 1fr 300px;
+    grid-template-rows: auto auto;
+    gap: 14px;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(46,204,113,0.4);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .card h2 {
+    font-size: 17px;
+    font-weight: 800;
+    color: #2ecc71;
+    border-bottom: 2px solid #2ecc71;
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  .card h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #a8e6bf;
+    margin: 10px 0 5px;
+    border-bottom: 1px solid rgba(46,204,113,0.3);
+    padding-bottom: 3px;
+  }
+
+  /* ── LEFT COLUMN: Tech Stack ── */
+  .tech-stack { grid-column: 1; grid-row: 1 / span 2; }
+
+  .tag-list { list-style: none; }
+  .tag-list li {
+    font-size: 12.5px;
+    color: #e0f7ea;
+    padding: 3px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    line-height: 1.4;
+  }
+  .tag-list li::before { content: "◆"; color: #2ecc71; font-size: 9px; margin-top: 3px; flex-shrink: 0; }
+  .tag-list li span.label { font-weight: 700; color: #fff; }
+  .tag-list li span.dash { color: #6fcf97; margin: 0 2px; }
+
+  /* Badge chips for tech */
+  .chip-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .chip {
+    background: rgba(46,204,113,0.18);
+    border: 1px solid rgba(46,204,113,0.5);
+    border-radius: 20px;
+    padding: 2px 9px;
+    font-size: 11.5px;
+    color: #b7f0cc;
+    font-weight: 600;
+  }
+
+  /* ── CENTER: System Architecture ── */
+  .arch { grid-column: 2; grid-row: 1; }
+  .arch-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+  }
+  .arch-layer {
+    width: 100%;
+    background: rgba(46,204,113,0.12);
+    border: 1px solid rgba(46,204,113,0.4);
+    border-radius: 8px;
+    padding: 8px 14px;
+    text-align: center;
+  }
+  .arch-layer .layer-title { font-size: 13px; font-weight: 700; color: #2ecc71; }
+  .arch-layer .layer-detail { font-size: 11.5px; color: #b7f0cc; margin-top: 2px; }
+  .arch-arrow { font-size: 20px; color: #2ecc71; line-height: 1; }
+  .flow-boxes {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    justify-content: center;
+  }
+  .flow-box {
+    flex: 1;
+    background: rgba(46,204,113,0.1);
+    border: 1px solid rgba(46,204,113,0.35);
+    border-radius: 8px;
+    padding: 7px 10px;
+    text-align: center;
+    font-size: 11.5px;
+    color: #b7f0cc;
+  }
+  .flow-box .fb-title { font-weight: 700; color: #fff; font-size: 12px; margin-bottom: 2px; }
+
+  /* ── CENTER BOTTOM: POC + Project Aims ── */
+  .poc { grid-column: 2; grid-row: 2; }
+
+  .poc-inner { display: flex; gap: 14px; }
+  .pie-area { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .pie {
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background: conic-gradient(#e74c3c 0% 25%, #27ae60 25% 60%, #f39c12 60% 80%, #3498db 80% 100%);
+    border: 3px solid rgba(255,255,255,0.2);
+  }
+  .pie-legend { font-size: 10.5px; color: #b7f0cc; }
+  .pie-legend div { display: flex; align-items: center; gap: 4px; margin: 2px 0; }
+  .pie-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .poc-text { font-size: 12px; color: #e0f7ea; line-height: 1.6; }
+  .poc-text strong { color: #f39c12; }
+
+  /* ── RIGHT COLUMN ── */
+  .right-col { grid-column: 3; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 14px; }
+
+  /* Goals */
+  .goal-list { list-style: none; }
+  .goal-list li {
+    font-size: 12.5px;
+    color: #e0f7ea;
+    padding: 4px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    line-height: 1.4;
+  }
+  .goal-list li::before { content: "✦"; color: #f39c12; font-size: 10px; flex-shrink: 0; margin-top: 2px; }
+
+  /* Impact boxes */
+  .impact-row { display: flex; gap: 8px; }
+  .impact-box {
+    flex: 1;
+    background: rgba(46,204,113,0.12);
+    border: 1px solid rgba(46,204,113,0.35);
+    border-radius: 8px;
+    padding: 8px;
+    text-align: center;
+  }
+  .impact-box .ib-icon { font-size: 22px; }
+  .impact-box .ib-label { font-size: 11px; color: #b7f0cc; margin-top: 4px; line-height: 1.3; }
+
+  /* Team */
+  .team-box { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px; }
+  .team-box p { font-size: 11.5px; color: #b7f0cc; line-height: 1.7; text-align: center; }
+  .team-box .team-title { font-size: 12px; font-weight: 700; color: #2ecc71; text-align: center; margin-bottom: 6px; }
+
+  /* FOOTER */
+  .footer {
+    margin-top: 14px;
+    border-top: 1px solid rgba(46,204,113,0.3);
+    padding-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #6fcf97;
+  }
+
+  /* Highlight box */
+  .highlight-box {
+    background: rgba(243,156,18,0.15);
+    border: 1px solid rgba(243,156,18,0.5);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: #fdebd0;
+    line-height: 1.6;
+    margin-top: 10px;
+    text-align: center;
+  }
+  .highlight-box strong { color: #f39c12; font-size: 14px; }
+
+  .badge-new {
+    display: inline-block;
+    background: #e74c3c;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 1px 4px;
+    vertical-align: middle;
+    margin-right: 2px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header class="header">
+  <div class="header-logo">
+    <span class="diamond">♦♦</span>
+    <div>
+      <div style="font-size:14px;color:#a8e6bf;">אפקה</div>
+      <div style="font-size:22px;">3K</div>
+    </div>
+  </div>
+  <div class="header-title">
+    <h1>חממה חכמה</h1>
+    <p>מערכת חכמה לניטור, בקרה ואופטימיזציה של גידול תקלאי</p>
+  </div>
+  <div class="header-right"></div>
+</header>
+
+<!-- ═══════════════ MAIN GRID ═══════════════ -->
+<div class="main-grid">
+
+  <!-- ═══ LEFT: Tech Stack ═══ -->
+  <div class="card tech-stack">
+    <h2>מחסנית טכנולוגית</h2>
+
+    <h3>💻 Backend</h3>
+    <ul class="tag-list">
+      <li><span class="label">FastAPI</span><span class="dash">–</span>REST API Framework (Async)</li>
+      <li><span class="label">SQLModel</span><span class="dash">–</span>ORM Type-Safe עם Pydantic</li>
+      <li><span class="label">aiomqtt</span><span class="dash">–</span>לקוח MQTT אסינכרוני</li>
+      <li><span class="label">asyncpg</span><span class="dash">–</span>מנוע SQLAlchemy אסינכרוני</li>
+      <li><span class="label">Pydantic + Settings</span><span class="dash">–</span>ולידציה והגדרות</li>
+      <li><span class="label">Loguru</span><span class="dash">–</span>לוגים מבניים</li>
+      <li><span class="label">Uvicorn</span><span class="dash">–</span>שרת ASGI</li>
+    </ul>
+
+    <h3>🗄️ נתונים ותשתית</h3>
+    <ul class="tag-list">
+      <li><span class="label">PostgreSQL 15</span><span class="dash">–</span>בסיס נתונים יחסי</li>
+      <li><span class="label">Eclipse Mosquitto</span><span class="dash">–</span>ברוקר MQTT</li>
+      <li><span class="label">Docker Compose</span><span class="dash">–</span>תזמור קונטיינרים</li>
+      <li><span class="label">GitHub Actions</span><span class="dash">–</span>CI/CD</li>
+    </ul>
+
+    <h3>🤖 בקרים ומפעילים</h3>
+    <ul class="tag-list">
+      <li><span class="label">ESP32-S2</span><span class="dash">–</span>בקר IoT ראשי (WiFi + GPIO)</li>
+      <li><span class="label">MicroPython</span><span class="badge-new">חדש</span><span class="dash">–</span>Firmware על ESP32-S2</li>
+      <li><span class="label">umqtt</span><span class="dash">–</span>לקוח MQTT קל-משקל לפירמוור</li>
+      <li><span class="label">משאבת מים</span><span class="dash">–</span>ממסר 5V (GPIO 5)</li>
+      <li><span class="label">מאוורר אוורור</span><span class="badge-new">חדש</span><span class="dash">–</span>ממסר 5V (GPIO 6)</li>
+      <li><span class="label">Raspberry Pi 4</span><span class="badge-new">חדש</span><span class="dash">–</span>מחשוב קצה לראייה</li>
+    </ul>
+
+    <h3>📡 חיישנים</h3>
+    <ul class="tag-list">
+      <li><span class="label">DHT22</span><span class="dash">–</span>טמפרטורה ולחות (GPIO 4)</li>
+      <li><span class="label">קיבולי לחות קרקע</span><span class="dash">–</span>ADC (GPIO 10)</li>
+      <li><span class="label">מתג צף מפלס מים</span><span class="badge-new">חדש</span><span class="dash">–</span>דיגיטלי (GPIO 7)</li>
+      <li><span class="label">מצלמת Raspberry Pi 3</span><span class="dash">–</span>ראיית מחשב</li>
+    </ul>
+
+    <h3>👁️ ראיית מחשב ובינה מלאכותית</h3>
+    <ul class="tag-list">
+      <li><span class="label">Roboflow Inference SDK</span><span class="badge-new">חדש</span><span class="dash">–</span>מודל זיהוי תות YOLOv8</li>
+      <li><span class="label">Picamera2</span><span class="dash">–</span>ספריית מצלמה לRaspberry Pi</li>
+      <li><span class="label">paho-mqtt</span><span class="dash">–</span>MQTT על Raspberry Pi</li>
+    </ul>
+
+    <h3>🧪 בדיקות</h3>
+    <div class="chip-row">
+      <span class="chip">pytest ≥8</span>
+      <span class="chip">pytest-asyncio</span>
+      <span class="chip">testcontainers</span>
+      <span class="chip">Unit / Integration / E2E</span>
+    </div>
+  </div>
+
+  <!-- ═══ CENTER TOP: Architecture ═══ -->
+  <div class="card arch">
+    <h2>ארכיטקטורת המערכת</h2>
+    <div class="arch-diagram">
+
+      <div class="flow-boxes">
+        <div class="flow-box">
+          <div class="fb-title">ESP32-S2</div>
+          MicroPython<br>חיישנים + ממסרים<br><em style="color:#6fcf97;">umqtt</em>
+        </div>
+        <div class="flow-box">
+          <div class="fb-title">Raspberry Pi 4</div>
+          Picamera2<br>Roboflow YOLOv8<br><em style="color:#6fcf97;">paho-mqtt</em>
+        </div>
+      </div>
+
+      <div class="arch-arrow">↓ MQTT (TCP 1883) ↓</div>
+
+      <div class="arch-layer">
+        <div class="layer-title">Eclipse Mosquitto – ברוקר הודעות</div>
+        <div class="layer-detail">Topic pattern routing · QoS 1</div>
+      </div>
+
+      <div class="arch-arrow">↓</div>
+
+      <div class="arch-layer">
+        <div class="layer-title">MqttDriver (aiomqtt) + Entrypoints</div>
+        <div class="layer-detail">JSON → Domain Events (TelemetryRecorded, PlantStageDetected)</div>
+      </div>
+
+      <div class="arch-arrow">↓</div>
+
+      <div class="arch-layer">
+        <div class="layer-title">MessageBus – אוטובוס הודעות דומיין</div>
+        <div class="layer-detail">Commands 1:1 · Events 1:N · async handlers</div>
+      </div>
+
+      <div class="arch-arrow">↓</div>
+
+      <div class="flow-boxes">
+        <div class="flow-box">
+          <div class="fb-title">FastAPI Router</div>
+          POST /actuation<br>ActuationService<br><em style="color:#6fcf97;">HTTP → MQTT</em>
+        </div>
+        <div class="flow-box">
+          <div class="fb-title">Feature Handlers</div>
+          Telemetry · Actuation<br>Automation · Vision<br><em style="color:#6fcf97;">Clean Arch Slices</em>
+        </div>
+        <div class="flow-box">
+          <div class="fb-title">Repository</div>
+          SQLModel + asyncpg<br>async Session<br><em style="color:#6fcf97;">per message tx</em>
+        </div>
+      </div>
+
+      <div class="arch-arrow">↓</div>
+
+      <div class="arch-layer">
+        <div class="layer-title">PostgreSQL 15 – אחסון נתונים</div>
+        <div class="layer-detail">Telemetry · Actuation commands · Plant lifecycle stages</div>
+      </div>
+
+    </div>
+
+    <div class="highlight-box">
+      המערכת מאפשרת מעבר מחקלאות מסורתית לחקלאות מדויקת עם ניטור בזמן אמת, תור, חישוב במים,
+      באגרנית המאפשרת תקלאות חקלאיות
+    </div>
+  </div>
+
+  <!-- ═══ RIGHT COLUMN ═══ -->
+  <div class="right-col">
+
+    <!-- Goals -->
+    <div class="card">
+      <h2>האתגר בחקלאות המודרנית</h2>
+      <ul class="goal-list">
+        <li>גידול בריכוז לימון</li>
+        <li>חיסכון במים</li>
+        <li>שינוי אקלים</li>
+        <li>עלויות אנרגיה גבוהות</li>
+        <li>תלות במעקב אנושי</li>
+      </ul>
+    </div>
+
+    <!-- POC Proof -->
+    <div class="card">
+      <h2>הוכחת היתכנות POC</h2>
+      <p style="font-size:12px;color:#e0f7ea;margin-bottom:8px;">
+        למערכת חכמה לניטור ושקיה אוטומטית של תותים
+      </p>
+      <div style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.5);border-radius:8px;padding:8px;text-align:center;margin-bottom:8px;">
+        <div style="font-size:13px;color:#e74c3c;font-weight:700;">כ-25% מהתוצרת אינה מגיעה</div>
+        <div style="font-size:12px;color:#fdebd0;">לשוק מסחרי</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;background:rgba(39,174,96,0.15);border:1px solid rgba(39,174,96,0.4);border-radius:8px;padding:8px;text-align:center;">
+          <div style="font-size:22px;font-weight:800;color:#27ae60;">75%</div>
+          <div style="font-size:10.5px;color:#a8e6bf;">מגיע לשוק</div>
+        </div>
+        <div style="flex:1;background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.4);border-radius:8px;padding:8px;text-align:center;">
+          <div style="font-size:22px;font-weight:800;color:#e74c3c;">25%</div>
+          <div style="font-size:10.5px;color:#fdebd0;">הפסד</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Impact -->
+    <div class="card">
+      <h2>אימפקט</h2>
+      <div class="impact-row" style="margin-bottom:8px;">
+        <div class="impact-box">
+          <div class="ib-icon">💧</div>
+          <div class="ib-label">חיסכון 25-35% במים</div>
+        </div>
+        <div class="impact-box">
+          <div class="ib-icon">🍓</div>
+          <div class="ib-label">זיהוי אוטומטי של בשלות</div>
+        </div>
+      </div>
+      <div class="impact-row">
+        <div class="impact-box">
+          <div class="ib-icon">⚡</div>
+          <div class="ib-label">שקיה מדויקת בזמן אמת</div>
+        </div>
+        <div class="impact-box">
+          <div class="ib-icon">📊</div>
+          <div class="ib-label">ניטור נתונים רציף</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team -->
+    <div class="card">
+      <h2>צוות הפרויקט</h2>
+      <div class="team-box">
+        <div class="team-title">תכנייה וניהול</div>
+        <p>
+          תומר עיני · ליאם הרמן<br>
+          יחיא תאג' מוחמד<br>
+          נועם ברק · מתן גנר<br>
+          <br>
+          <span style="color:#2ecc71;font-weight:700;">מנחה:</span> מדעי המחשב<br>
+          <span style="color:#2ecc71;font-weight:700;">מכינה:</span> אפקה
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ CENTER BOTTOM: Dev Flow ═══ -->
+  <div class="card poc">
+    <h2>משך פיתוח ותהליך</h2>
+    <div class="poc-inner">
+      <div style="flex:1;">
+        <h3>🔄 זרימת הודעות (MQTT → DB)</h3>
+        <div style="font-size:12px;color:#b7f0cc;line-height:2;direction:ltr;text-align:left;">
+          MQTT message<br>
+          → MqttDriver routes by topic<br>
+          → Entrypoint: JSON → Event<br>
+          → MessageBus.handle(event)<br>
+          → Handler persists via Repository<br>
+          → async Session (per message tx)
+        </div>
+      </div>
+      <div style="flex:1;">
+        <h3>🍓 זרימת ראייה (Pi → DB)</h3>
+        <div style="font-size:12px;color:#b7f0cc;line-height:2;direction:ltr;text-align:left;">
+          Raspberry Pi Camera Module 3<br>
+          → Picamera2 captures frame<br>
+          → Roboflow Inference SDK<br>
+          → YOLOv8: Flower/Green/Red<br>
+          → paho-mqtt publishes stage<br>
+          → Backend updates lifecycle
+        </div>
+      </div>
+      <div style="flex:1;">
+        <h3>🚿 בקרת שקיה (HTTP → MQTT)</h3>
+        <div style="font-size:12px;color:#b7f0cc;line-height:2;direction:ltr;text-align:left;">
+          POST /actuation<br>
+          → FastAPI router<br>
+          → ActuationService publishes cmd<br>
+          → MQTT command to ESP32-S2<br>
+          → ACK resolves Future<br>
+          → HTTP 200 response
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <span>תכנייה ותכנון | אפקה | תוכנות מחשב ואלקטרוניקה</span>
+  <span>שנת תשפ"ה | 2025</span>
+  <span>Smart Strawberry Greenhouse IoT System</span>
+</div>
+
+</body>
+</html>
