@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     MQTT_BROKER_IP: str
     MQTT_PORT: int
     MQTT_TOPIC_PREFIX: str = "greenhouse"
+    GREENHOUSE_ID: str = "greenhouse-01"
 
 
 config = Settings()

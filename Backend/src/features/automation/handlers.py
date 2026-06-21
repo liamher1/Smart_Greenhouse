@@ -6,6 +6,7 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from base.infrastructure.message_bus import MessageBus
+from config import config
 from features.telemetry.events import TelemetryRecorded
 from features.vision.events import FruitRipenessDetected
 
@@ -42,10 +43,11 @@ class RipenessHandler:
         async with self._session_factory() as session:
             async with session.begin():
                 repo = AutomationRepository(session)
-                await repo.upsert_greenhouse_state(event.device_id, event.stage)
+                await repo.upsert_greenhouse_state(config.GREENHOUSE_ID, event.stage)
 
         logger.info(
-            "[Automation] GreenhouseState updated — device={} stage={}",
+            "[Automation] GreenhouseState updated — greenhouse={} reported_by={} stage={}",
+            config.GREENHOUSE_ID,
             event.device_id,
             event.stage,
         )
@@ -62,7 +64,7 @@ class TelemetryAutomationHandler:
         async with self._session_factory() as session:
             async with session.begin():
                 repo = AutomationRepository(session)
-                state = await repo.get_greenhouse_state(event.device_id)
+                state = await repo.get_greenhouse_state(config.GREENHOUSE_ID)
                 stage = state.plant_stage if state else PlantStage.GREEN
                 rules = await repo.get_active_rules(stage)
 
