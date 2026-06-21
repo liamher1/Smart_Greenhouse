@@ -1,0 +1,9 @@
+fastapi[all]
+sqlmodel
+aiomqtt
+loguru
+asyncpg
+pydantic
+pytest
+pytest-asyncio
+testcontainers
