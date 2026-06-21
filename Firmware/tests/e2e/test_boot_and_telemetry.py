@@ -74,6 +74,3 @@ async def test_firmware_publishes_telemetry_with_valid_schema(wokwi_process):
 
     soil = data["soil_moisture"]
     assert isinstance(soil, int) and 0 <= soil <= 4095, f"soil_moisture {soil} out of ADC range"
-
-    water = data["water_level"]
-    assert water in (0, 1), f"water_level must be 0 or 1, got {water}"

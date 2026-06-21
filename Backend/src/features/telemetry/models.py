@@ -38,7 +38,6 @@ class TelemetryReading(SQLModel, table=True):
     temperature: float
     humidity: float
     soil_moisture: Optional[float] = Field(default=None)
-    water_level: Optional[int] = Field(default=None)
 
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

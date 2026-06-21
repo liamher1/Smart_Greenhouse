@@ -52,7 +52,7 @@ class ControlRule(SQLModel, table=True):
         default=None,
         sa_column=Column(SAEnum(PlantStage), nullable=True),
     )
-    # Name of the telemetry field to evaluate: temperature / humidity / soil_moisture / water_level
+    # Name of the telemetry field to evaluate: temperature / humidity / soil_moisture
     sensor_metric: str
     # Comparison operator: lt | gt | lte | gte
     operator: str

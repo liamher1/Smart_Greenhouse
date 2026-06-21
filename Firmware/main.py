@@ -94,7 +94,6 @@ def _publish_telemetry(mqtt_ok):
             "temperature": temp,
             "humidity": hum,
             "soil_moisture": soil,
-            "water_level": 1 if tank_empty else 0,
         },
     }
     print(f"Telemetry: {json.dumps(payload)}")

@@ -24,5 +24,4 @@ class TelemetryRecorded(BaseModel):
     device_id: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
     timestamp: datetime
     soil_moisture: Optional[float] = Field(default=None, ge=0.0, le=100.0)
-    water_level: Optional[int] = Field(default=None, ge=0, le=1)
 
