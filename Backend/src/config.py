@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     MQTT_BROKER_IP: str
     MQTT_PORT: int
     MQTT_TOPIC_PREFIX: str = "greenhouse"
+    VISION_MODEL_PATH: str = "/home/pi/greenhouse/models/strawberry.pt"
+    IMAGE_SAVE_DIR: str = "/home/pi/greenhouse/images"
+    DEVICE_ID: str = "esp32-gh-01"
+    VISION_DEVICE_ID: str = "rpi-gh-01"
 
 
 config = Settings()

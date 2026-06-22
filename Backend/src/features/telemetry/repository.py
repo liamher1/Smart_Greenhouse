@@ -1,3 +1,4 @@
+from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import TelemetryReading
@@ -49,11 +50,26 @@ class TelemetryRepository:
             The provided telemetry_reading object is modified in-place to reflect
             any database-generated values (e.g., auto-generated UUID if not provided).
         """
-        # Stage entity in the current unit of work; commit is managed upstream.
         self.session.add(telemetry_reading)
-        # Flush to surface DB errors inside the current transaction scope.
         await self.session.flush()
 
+    async def get_latest(self, device_id: str) -> TelemetryReading | None:
+        result = await self.session.execute(
+            select(TelemetryReading)
+            .where(TelemetryReading.device_id == device_id)
+            .order_by(desc(TelemetryReading.timestamp))
+            .limit(1)
+        )
+        return result.scalars().first()
 
-
+    async def get_history(self, device_id: str, limit: int = 50) -> list[TelemetryReading]:
+        result = await self.session.execute(
+            select(TelemetryReading)
+            .where(TelemetryReading.device_id == device_id)
+            .order_by(desc(TelemetryReading.timestamp))
+            .limit(limit)
+        )
+        rows = list(result.scalars().all())
+        rows.reverse()
+        return rows
 
