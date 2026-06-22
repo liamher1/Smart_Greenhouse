@@ -19,10 +19,12 @@ from base.domain.command import Command
 class ActuationAction(str, Enum):
 	"""Supported greenhouse actuation actions — values match firmware command strings."""
 
-	PUMP_ON  = "PUMP_ON"
-	PUMP_OFF = "PUMP_OFF"
-	FAN_ON   = "FAN_ON"
-	FAN_OFF  = "FAN_OFF"
+	PUMP_ON   = "PUMP_ON"
+	PUMP_OFF  = "PUMP_OFF"
+	FAN_ON    = "FAN_ON"
+	FAN_OFF   = "FAN_OFF"
+	LIGHT_ON  = "LIGHT_ON"
+	LIGHT_OFF = "LIGHT_OFF"
 
 
 @dataclass(frozen=True)

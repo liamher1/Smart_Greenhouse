@@ -7,6 +7,7 @@ from config import config
 # Import models here so SQLModel knows which tables to create
 from features.telemetry.models import TelemetryReading
 from features.automation.models import ControlRule, GreenhouseState, WateringPolicy, WateringTimes
+from features.vision.models import VisionReading  # noqa: F401
 
 DATABASE_URL = (
     f"postgresql+asyncpg://{config.DB_USER}:{config.DB_PASSWORD}"
