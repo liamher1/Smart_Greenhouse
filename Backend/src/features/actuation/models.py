@@ -23,8 +23,7 @@ class ActuationAction(str, Enum):
 	PUMP_OFF  = "PUMP_OFF"
 	FAN_ON    = "FAN_ON"
 	FAN_OFF   = "FAN_OFF"
-	LIGHT_ON  = "LIGHT_ON"
-	LIGHT_OFF = "LIGHT_OFF"
+	
 
 
 @dataclass(frozen=True)
