@@ -67,7 +67,6 @@ class _TelemetryWSBroadcaster:
             "temperature": event.temperature,
             "humidity": event.humidity,
             "soil_moisture": event.soil_moisture,
-            "water_level": event.water_level,
             "timestamp": event.timestamp.isoformat(),
         })
 
@@ -94,7 +93,7 @@ async def lifespan(app: FastAPI):
     telemetry_handler = TelemetryEventHandler(session_factory=async_session_maker)
     message_bus.subscribe(TelemetryRecorded, telemetry_handler)
     ws_broadcaster = _TelemetryWSBroadcaster(ws_manager)
-    message_bus.subscribe(TelemetryRecorded, ws_broadcaster)
+    message_bus.subscribe(TelemetryRecorded, ws_broadcaster.handle)
     logger.info("Telemetry feature wired up.")
 
     # 4. MQTT driver
@@ -118,7 +117,7 @@ async def lifespan(app: FastAPI):
     message_bus.subscribe(FruitRipenessDetected, ripeness_handler)
 
     vision_reading_handler = VisionReadingHandler(async_session_maker)
-    message_bus.subscribe(FruitRipenessDetected, vision_reading_handler)
+    message_bus.subscribe(FruitRipenessDetected, vision_reading_handler.handle)
 
     telemetry_automation_handler = TelemetryAutomationHandler(async_session_maker, message_bus)
     message_bus.subscribe(TelemetryRecorded, telemetry_automation_handler)

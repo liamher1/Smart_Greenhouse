@@ -1,26 +1,16 @@
-import machine
-from config import FAN_PIN, FAN_ACTIVE_HIGH
-
-_relay = machine.Pin(FAN_PIN, machine.Pin.OUT)
-
-# Ensure fan is off at import time regardless of relay polarity
-_relay.value(0 if FAN_ACTIVE_HIGH else 1)
-
-
-def _active():
-    return 1 if FAN_ACTIVE_HIGH else 0
-
-def _inactive():
-    return 0 if FAN_ACTIVE_HIGH else 1
+import relay_board
+from config import FAN_RELAY_CHANNEL
 
 
 def on():
-    _relay.value(_active())
+    relay_board.on(FAN_RELAY_CHANNEL)
     print("Fan ON")
 
+
 def off():
-    _relay.value(_inactive())
+    relay_board.off(FAN_RELAY_CHANNEL)
     print("Fan OFF")
 
+
 def is_on():
-    return _relay.value() == _active()
+    return relay_board.is_on(FAN_RELAY_CHANNEL)

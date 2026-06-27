@@ -33,6 +33,7 @@ FILES = {
     "dht_sensor.py":        FIRMWARE_DIR / "dht_sensor.py",
     "soil_sensor.py":       FIRMWARE_DIR / "soil_sensor.py",
     "float_switch.py":      FIRMWARE_DIR / "float_switch.py",
+    "relay_board.py":       FIRMWARE_DIR / "relay_board.py",
     "pump.py":              FIRMWARE_DIR / "pump.py",
     "fan.py":               FIRMWARE_DIR / "fan.py",
     "mqtt_client.py":       FIRMWARE_DIR / "mqtt_client.py",

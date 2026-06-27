@@ -3,7 +3,6 @@ import time
 import ntp_sync
 import dht_sensor
 import soil_sensor
-import float_switch
 import pump
 import fan
 import mqtt_client
@@ -27,9 +26,6 @@ def _on_command(topic, data):
     action     = data.get("action")
 
     if action == "PUMP_ON":
-        if float_switch.is_empty():
-            print("Safety interlock: tank empty — PUMP_ON blocked")
-            return
         pump.on()
     elif action == "PUMP_OFF":
         pump.off()
@@ -78,11 +74,10 @@ def _publish_telemetry(mqtt_ok):
     try:
         temp, hum = dht_sensor.read()
     except (OSError, ValueError) as e:
-        print(f"DHT read error (invalid value): {e}")
-        temp, hum = None, None
+        print(f"DHT read error: {e} — skipping publish")
+        return
 
     soil = soil_sensor.read()
-    tank_empty = float_switch.is_empty()
 
     payload = {
         "header": {
@@ -116,10 +111,6 @@ def main():
     last_publish = time.ticks_ms() - TELEMETRY_INTERVAL_SEC * 1000
 
     while True:
-        # Safety interlock — enforce every iteration regardless of MQTT state
-        if float_switch.is_empty():
-            pump.off()
-
         # MQTT command check with reconnect on drop
         if mqtt_ok:
             try:
