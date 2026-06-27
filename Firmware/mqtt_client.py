@@ -1,5 +1,5 @@
 import json
-from umqtt.robust import MQTTClient as _RobustClient
+from umqtt.simple import MQTTClient as _SimpleClient
 from config import MQTT_BROKER, MQTT_PORT, DEVICE_ID
 
 _client = None
@@ -23,7 +23,7 @@ def connect(on_command):
     """Connect to the broker, subscribe to the command topic, and register the command callback."""
     global _client, _command_cb
     _command_cb = on_command
-    _client = _RobustClient(DEVICE_ID, MQTT_BROKER, port=MQTT_PORT)
+    _client = _SimpleClient(DEVICE_ID, MQTT_BROKER, port=MQTT_PORT)
     _client.set_callback(_on_raw_message)
     _client.connect()
     _client.subscribe(COMMAND_TOPIC)

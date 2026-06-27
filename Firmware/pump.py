@@ -15,12 +15,14 @@ def _inactive():
 
 
 def on():
-    _relay.value(_active())
-    print("Pump ON")
+    if _relay.value() != _active():
+        _relay.value(_active())
+        print("Pump ON")
 
 def off():
-    _relay.value(_inactive())
-    print("Pump OFF")
+    if _relay.value() != _inactive():
+        _relay.value(_inactive())
+        print("Pump OFF")
 
 def is_on():
     return _relay.value() == _active()

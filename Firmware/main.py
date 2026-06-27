@@ -51,7 +51,7 @@ def _connect_mqtt():
         try:
             mqtt_client.connect(_on_command)
             return True
-        except OSError as e:
+        except Exception as e:
             remaining = _MAX_MQTT_RETRIES - attempt - 1
             if remaining > 0:
                 print(f"MQTT connect failed: {e} — retrying in 5s ({remaining} left)")
@@ -68,7 +68,7 @@ def _reconnect_with_backoff():
             mqtt_client.connect(_on_command)
             print("MQTT reconnected")
             return True
-        except OSError as e:
+        except Exception as e:
             print(f"MQTT reconnect failed: {e} — retrying in {delay}s")
             time.sleep(delay)
             delay = min(delay * 2, 60)
@@ -103,6 +103,14 @@ def _publish_telemetry(mqtt_ok):
 
 def main():
     ntp_sync.sync()
+
+    # Diagnostic: read DHT22 before MQTT connects to isolate socket interference
+    try:
+        t, h = dht_sensor.read()
+        print(f"PRE-MQTT DHT read OK: {t} C  {h} %")
+    except Exception as e:
+        print(f"PRE-MQTT DHT read FAILED: {e}")
+
     mqtt_ok = _connect_mqtt()
 
     last_publish = time.ticks_ms() - TELEMETRY_INTERVAL_SEC * 1000

@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     MQTT_PORT: int
     MQTT_TOPIC_PREFIX: str = "greenhouse"
     GREENHOUSE_ID: str = "greenhouse-01"
+    IMAGE_SAVE_DIR: str = str(Path(__file__).resolve().parent.parent / "captured_images")
 
 
 config = Settings()
