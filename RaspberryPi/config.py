@@ -22,4 +22,4 @@ CONFIDENCE_THRESHOLD = 0.40
 DOMINANCE_THRESHOLD_PCT = 60.0
 
 # Directory where captured images are stored locally on the Pi
-IMAGE_SAVE_DIR = "/home/liamh/greenhouse/images"
+IMAGE_SAVE_DIR = "/var/lib/greenhouse/images"

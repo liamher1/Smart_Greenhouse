@@ -1,13 +1,11 @@
 # WiFi
 # Wokwi simulation: use "Wokwi-GUEST" / ""
 # Real hardware:    use your actual SSID / password
-WIFI_SSID = "EdimaxAPf0"
-WIFI_PASSWORD = "h9700156"
+WIFI_SSID = "Greenhouse"
+WIFI_PASSWORD = "greenhouse2024"
 
-# MQTT broker — must match MQTT_BROKER_IP in Backend/.env
-# Wokwi simulation (VS Code extension): "host.wokwi.internal" reaches localhost
-# Real hardware: set to your broker's LAN IP (e.g. "192.168.1.100")
-MQTT_BROKER = "10.0.0.13"
+# MQTT broker — Raspberry Pi hotspot IP (fixed by hostapd/NetworkManager)
+MQTT_BROKER = "192.168.4.1"
 MQTT_PORT = 1883
 
 # Unique identifier for this device — used in MQTT topics and telemetry headers

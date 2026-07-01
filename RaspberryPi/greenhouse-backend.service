@@ -1,0 +1,18 @@
+[Unit]
+Description=Smart Greenhouse Backend
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__REPO_DIR__/Backend
+ExecStartPre=/usr/bin/docker-compose up -d db mqtt
+ExecStartPre=/bin/sleep 5
+ExecStart=/usr/bin/python3 __REPO_DIR__/Backend/main.py
+Environment=PYTHONPATH=__REPO_DIR__/Backend/src
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
