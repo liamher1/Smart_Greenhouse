@@ -42,7 +42,8 @@ _RED_CLASSES   = {"red strawberry"}
 # ── Roboflow client ───────────────────────────────────────────────────────────
 
 def _load_model() -> InferenceHTTPClient:
-    """Create Roboflow serverless inference client."""
+    if not config.ROBOFLOW_API_KEY:
+        raise RuntimeError("ROBOFLOW_API_KEY is not set in RaspberryPi/config.py")
     print(f"[Vision] Connecting to Roboflow serverless API (model: {config.MODEL_ID}) ...")
     client = InferenceHTTPClient(
         api_url="https://serverless.roboflow.com",

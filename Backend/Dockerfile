@@ -24,5 +24,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # 7. Command to run the application
-# We use "--reload" to ensure the app restarts when you change code in PyCharm
 CMD ["python", "main.py"]

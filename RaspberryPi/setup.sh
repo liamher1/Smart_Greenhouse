@@ -70,6 +70,19 @@ cd "$REPO_DIR/Frontend"
 npm install
 npm run build
 
+echo "=== Creating .env from template ==="
+if [ ! -f "$REPO_DIR/Backend/.env" ]; then
+    cp "$REPO_DIR/Backend/.env.example" "$REPO_DIR/Backend/.env"
+    echo "  Created Backend/.env — edit it to set DB_PASSWORD before rebooting."
+fi
+
+echo "=== Starting infrastructure and seeding database ==="
+cd "$REPO_DIR/Backend"
+docker-compose up -d db mqtt
+sleep 5
+PYTHONPATH="$REPO_DIR/Backend/src" python3 "$REPO_DIR/Backend/seeds/seed_albion.py"
+docker-compose stop
+
 echo "=== Installing systemd services ==="
 cp "$REPO_DIR/RaspberryPi/greenhouse-backend.service" /etc/systemd/system/
 cp "$REPO_DIR/RaspberryPi/greenhouse-vision.service" /etc/systemd/system/

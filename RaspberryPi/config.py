@@ -12,7 +12,7 @@ INFERENCE_INTERVAL_SEC = 4 * 3600  # 4 hours
 # Get a free API key at https://app.roboflow.com
 # Model page: https://universe.roboflow.com/strawberries/strawberry-detect
 # Check the version number on the model page and update below if needed
-ROBOFLOW_API_KEY = ""
+ROBOFLOW_API_KEY = ""  # Required: set your key from https://app.roboflow.com
 MODEL_ID = "strawberry-detect/6"
 
 # Minimum confidence to count a detection (0.0 – 1.0)
