@@ -1,3 +1,8 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+
 DEVICE_ID = "rpi-gh-01"
 
 # MQTT — Pi is the broker, so this is localhost
@@ -12,7 +17,7 @@ INFERENCE_INTERVAL_SEC = 4 * 3600  # 4 hours
 # Get a free API key at https://app.roboflow.com
 # Model page: https://universe.roboflow.com/strawberries/strawberry-detect
 # Check the version number on the model page and update below if needed
-ROBOFLOW_API_KEY = ""  # Required: set your key from https://app.roboflow.com
+ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "")
 MODEL_ID = "strawberry-detect/6"
 
 # Minimum confidence to count a detection (0.0 – 1.0)

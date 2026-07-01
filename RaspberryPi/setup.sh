@@ -70,10 +70,14 @@ cd "$REPO_DIR/Frontend"
 npm install
 npm run build
 
-echo "=== Creating .env from template ==="
+echo "=== Creating .env files from templates ==="
 if [ ! -f "$REPO_DIR/Backend/.env" ]; then
     cp "$REPO_DIR/Backend/.env.example" "$REPO_DIR/Backend/.env"
     echo "  Created Backend/.env — edit it to set DB_PASSWORD before rebooting."
+fi
+if [ ! -f "$REPO_DIR/RaspberryPi/.env" ]; then
+    cp "$REPO_DIR/RaspberryPi/.env.example" "$REPO_DIR/RaspberryPi/.env"
+    echo "  Created RaspberryPi/.env — edit it to set ROBOFLOW_API_KEY before rebooting."
 fi
 
 echo "=== Starting infrastructure and seeding database ==="
