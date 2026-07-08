@@ -24,8 +24,10 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import base64
+
+import requests
 import paho.mqtt.client as mqtt
-from inference_sdk import InferenceHTTPClient
 
 import config
 
@@ -41,16 +43,10 @@ _RED_CLASSES   = {"red strawberry"}
 
 # ── Roboflow client ───────────────────────────────────────────────────────────
 
-def _load_model() -> InferenceHTTPClient:
+def _load_model() -> None:
     if not config.ROBOFLOW_API_KEY:
-        raise RuntimeError("ROBOFLOW_API_KEY is not set in RaspberryPi/config.py")
-    print(f"[Vision] Connecting to Roboflow serverless API (model: {config.MODEL_ID}) ...")
-    client = InferenceHTTPClient(
-        api_url="https://serverless.roboflow.com",
-        api_key=config.ROBOFLOW_API_KEY,
-    )
-    print("[Vision] Client ready.")
-    return client
+        raise RuntimeError("ROBOFLOW_API_KEY is not set in RaspberryPi/.env")
+    print(f"[Vision] Roboflow serverless API ready (model: {config.MODEL_ID})")
 
 
 # ── Camera ────────────────────────────────────────────────────────────────────
@@ -81,7 +77,7 @@ def _capture_image() -> str:
 
 # ── Inference ─────────────────────────────────────────────────────────────────
 
-def _run_inference(client: InferenceHTTPClient, image_path: str) -> dict:
+def _run_inference(image_path: str) -> dict:
     """
     Send image to Roboflow and return stage stats.
 
@@ -92,8 +88,16 @@ def _run_inference(client: InferenceHTTPClient, image_path: str) -> dict:
       - red_pct        : % of detections that are Red Strawberry
       - confidence     : average detection confidence (0–1)
     """
-    response    = client.infer(image_path, model_id=config.MODEL_ID)
-    predictions = response.get("predictions", [])
+    with open(image_path, "rb") as f:
+        image_b64 = base64.b64encode(f.read()).decode("utf-8")
+    resp = requests.post(
+        f"https://serverless.roboflow.com/{config.MODEL_ID}",
+        params={"api_key": config.ROBOFLOW_API_KEY},
+        json={"image": {"type": "base64", "value": image_b64}},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    predictions = resp.json().get("predictions", [])
 
     if not predictions:
         print("[Vision] No strawberries detected — reporting Green stage at 0% confidence.")
@@ -192,7 +196,7 @@ def _publish(client: mqtt.Client, inference_result: dict) -> None:
 
 def main() -> None:
     print("[Vision] Agent starting.")
-    client      = _load_model()
+    _load_model()
     mqtt_client = _connect_mqtt()
 
     last_run = time.time() - config.INFERENCE_INTERVAL_SEC
@@ -201,7 +205,7 @@ def main() -> None:
         if time.time() - last_run >= config.INFERENCE_INTERVAL_SEC:
             try:
                 image_path       = _capture_image()
-                inference_result = _run_inference(client, image_path)
+                inference_result = _run_inference(image_path)
                 _publish(mqtt_client, inference_result)
             except Exception as e:
                 print(f"[Vision] Cycle error: {e}")
