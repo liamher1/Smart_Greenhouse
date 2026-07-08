@@ -28,6 +28,7 @@ import base64
 
 import requests
 import paho.mqtt.client as mqtt
+from paho.mqtt.enums import CallbackAPIVersion
 
 import config
 
@@ -147,30 +148,32 @@ def _run_inference(image_path: str) -> dict:
 # ── MQTT ──────────────────────────────────────────────────────────────────────
 
 def _connect_mqtt() -> mqtt.Client:
-    client = mqtt.Client(client_id=f"{config.DEVICE_ID}-vision")
+    client = mqtt.Client(CallbackAPIVersion.VERSION1, client_id=f"{config.DEVICE_ID}-vision")
+    client.reconnect_delay_set(min_delay=2, max_delay=60)
+
+    def on_connect(client, userdata, flags, rc):
+        if rc == 0:
+            print(f"[Vision] MQTT connected to {config.MQTT_BROKER}:{config.MQTT_PORT}")
+        else:
+            print(f"[Vision] MQTT connect failed rc={rc}")
 
     def on_disconnect(client, userdata, rc):
         if rc != 0:
-            print(f"[Vision] MQTT disconnected (rc={rc}), reconnecting...")
-            _reconnect(client)
+            print(f"[Vision] MQTT disconnected (rc={rc}), will auto-reconnect...")
 
+    client.on_connect = on_connect
     client.on_disconnect = on_disconnect
-    _reconnect(client)
-    client.loop_start()
-    return client
 
-
-def _reconnect(client: mqtt.Client) -> None:
-    delay = 2
     while True:
         try:
             client.connect(config.MQTT_BROKER, config.MQTT_PORT)
-            print(f"[Vision] MQTT connected to {config.MQTT_BROKER}:{config.MQTT_PORT}")
-            return
+            break
         except Exception as e:
-            print(f"[Vision] MQTT connect failed: {e} — retrying in {delay}s")
-            time.sleep(delay)
-            delay = min(delay * 2, 60)
+            print(f"[Vision] MQTT connect failed: {e} — retrying in 5s")
+            time.sleep(5)
+
+    client.loop_start()
+    return client
 
 
 def _publish(client: mqtt.Client, inference_result: dict) -> None:
