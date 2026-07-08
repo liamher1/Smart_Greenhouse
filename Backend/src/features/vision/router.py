@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import os
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import requests as http_requests
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,41 +23,41 @@ router = APIRouter(prefix="/api/v1/vision", tags=["vision"])
 _GREEN_CLASSES = {"flower", "green strawberry"}
 _RED_CLASSES = {"red strawberry"}
 _DOMINANCE = 60.0
+_ROBOFLOW_MODEL = "strawberry-detect/6"
 
 
 def _capture_and_infer() -> dict:
-    try:
-        from picamera2 import Picamera2
-        from picamera2.controls import AfModeEnum
-    except ImportError:
-        raise RuntimeError("picamera2 not available — not running on Raspberry Pi")
-
-    try:
-        from ultralytics import YOLO
-    except ImportError:
-        raise RuntimeError("ultralytics not installed")
-
-    if not Path(config.VISION_MODEL_PATH).exists():
-        raise RuntimeError(f"Model file not found: {config.VISION_MODEL_PATH}")
+    if not os.getenv("ROBOFLOW_API_KEY") and not _get_roboflow_key():
+        raise RuntimeError("ROBOFLOW_API_KEY not set")
 
     Path(config.IMAGE_SAVE_DIR).mkdir(parents=True, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     filename = f"capture_{ts}.jpg"
     path = os.path.join(config.IMAGE_SAVE_DIR, filename)
 
-    cam = Picamera2()
-    cam.configure(cam.create_still_configuration())
-    cam.start()
-    cam.set_controls({"AfMode": AfModeEnum.Auto})
-    cam.autofocus_cycle()
-    cam.capture_file(path)
-    cam.stop()
+    result = subprocess.run(
+        ["rpicam-still", "--output", path, "--autofocus-mode", "auto",
+         "--timeout", "3000", "--nopreview"],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"rpicam-still failed: {result.stderr.strip()}")
 
-    model = YOLO(config.VISION_MODEL_PATH)
-    results = model(path, conf=0.40)[0]
-    predictions = results.boxes
+    api_key = _get_roboflow_key()
+    with open(path, "rb") as f:
+        image_b64 = base64.b64encode(f.read()).decode("utf-8")
 
-    if predictions is None or len(predictions) == 0:
+    resp = http_requests.post(
+        f"https://serverless.roboflow.com/{_ROBOFLOW_MODEL}",
+        params={"api_key": api_key},
+        data=image_b64,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    predictions = resp.json().get("predictions", [])
+
+    if not predictions:
         return {
             "stage": "Green", "green_pct": 0.0,
             "white_pink_pct": 0.0, "red_pct": 0.0,
@@ -63,13 +66,12 @@ def _capture_and_infer() -> dict:
 
     green_count = red_count = 0
     total_conf = 0.0
-
-    for box in predictions:
-        cls_name = results.names[int(box.cls[0])].lower()
-        total_conf += float(box.conf[0])
-        if cls_name in _GREEN_CLASSES:
+    for pred in predictions:
+        cls = pred["class"].lower()
+        total_conf += pred["confidence"]
+        if cls in _GREEN_CLASSES:
             green_count += 1
-        elif cls_name in _RED_CLASSES:
+        elif cls in _RED_CLASSES:
             red_count += 1
 
     total = green_count + red_count
@@ -92,6 +94,15 @@ def _capture_and_infer() -> dict:
         "confidence": avg_conf,
         "image_filename": filename,
     }
+
+
+def _get_roboflow_key() -> str:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parents[4] / "RaspberryPi" / ".env")
+    key = os.getenv("ROBOFLOW_API_KEY", "")
+    if not key:
+        raise RuntimeError("ROBOFLOW_API_KEY not set in RaspberryPi/.env")
+    return key
 
 
 @router.get("/latest/{device_id}", status_code=status.HTTP_200_OK)
