@@ -94,7 +94,8 @@ def _run_inference(image_path: str) -> dict:
     resp = requests.post(
         f"https://serverless.roboflow.com/{config.MODEL_ID}",
         params={"api_key": config.ROBOFLOW_API_KEY},
-        json={"image": {"type": "base64", "value": image_b64}},
+        data=image_b64,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
         timeout=30,
     )
     resp.raise_for_status()
